@@ -56,7 +56,10 @@ export default function RepPanel() {
                     <Text style={styles.sectionTitle}>Quick Actions</Text>
 
                     <View style={styles.actionList}>
-                        <TouchableOpacity style={styles.actionCard}>
+                        <TouchableOpacity
+                            style={styles.actionCard}
+                            onPress={() => router.push('/post-announcement')}
+                        >
                             <Text style={styles.actionTitle}>Post Announcement</Text>
                             <Text style={styles.actionText}>
                                 Share class updates, cancellations, venue changes, and reminders.
