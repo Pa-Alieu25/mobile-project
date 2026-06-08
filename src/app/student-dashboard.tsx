@@ -102,12 +102,16 @@ export default function StudentDashboard() {
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Latest Announcement</Text>
-                    <View style={styles.card}>
+
+                    <TouchableOpacity
+                        style={styles.card}
+                        onPress={() => router.push('/announcements')}
+                    >
                         <Text style={styles.emptyTitle}>No announcement yet</Text>
                         <Text style={styles.emptyText}>
-                            Course rep announcements will appear here once posted.
+                            Course rep announcements will appear here once posted. Tap to view all announcements.
                         </Text>
-                    </View>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.section}>
