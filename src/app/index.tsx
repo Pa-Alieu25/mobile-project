@@ -1,98 +1,240 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+type UserRole = 'student' | 'course_rep' | 'admin';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+type LoginResponse = {
+  token: string;
+  user: {
+    id: number;
+    fullName: string;
+    indexNumber?: string;
+    referenceNumber?: string;
+    email: string;
+    role: UserRole;
+    programme?: string;
+    level?: string;
+  };
+};
+
+const API_URL = 'http://10.0.2.2:8080/api';
+
+export default function LoginScreen() {
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    const cleanedIdentifier = identifier.trim();
+    const cleanedPassword = password.trim();
+
+    if (!cleanedIdentifier || !cleanedPassword) {
+      Alert.alert(
+        'Missing details',
+        'Please enter your index number, reference number, or email and password.'
+      );
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          identifier: cleanedIdentifier,
+          password: cleanedPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        Alert.alert(
+          'Login failed',
+          'Invalid index number, reference number, email, or password.'
+        );
+        return;
+      }
+
+      const data: LoginResponse = await response.json();
+
+      await SecureStore.setItemAsync('authToken', data.token);
+      await SecureStore.setItemAsync('userId', String(data.user.id));
+      await SecureStore.setItemAsync('userName', data.user.fullName);
+      await SecureStore.setItemAsync('userEmail', data.user.email);
+      await SecureStore.setItemAsync('userRole', data.user.role);
+
+      if (data.user.indexNumber) {
+        await SecureStore.setItemAsync('indexNumber', data.user.indexNumber);
+      }
+
+      if (data.user.referenceNumber) {
+        await SecureStore.setItemAsync(
+          'referenceNumber',
+          data.user.referenceNumber
+        );
+      }
+
+      if (data.user.programme) {
+        await SecureStore.setItemAsync('programme', data.user.programme);
+      }
+
+      if (data.user.level) {
+        await SecureStore.setItemAsync('level', data.user.level);
+      }
+
+      if (data.user.role === 'student') {
+        router.replace('/student-dashboard');
+        return;
+      }
+
+      if (data.user.role === 'course_rep') {
+        router.replace('/rep-panel');
+        return;
+      }
+
+      if (data.user.role === 'admin') {
+        router.replace('/admin-panel');
+        return;
+      }
+
+      Alert.alert('Login failed', 'Your account role is not recognized.');
+    } catch (error) {
+      Alert.alert(
+        'Connection error',
+        'Unable to connect to the server. Please check your connection and try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={styles.content}>
+        <Text style={styles.title}>ClassMate</Text>
+        <Text style={styles.subtitle}>Sign in to your academic dashboard</Text>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to Mobile Project
-          </ThemedText>
-        </ThemedView>
+        <TextInput
+          style={styles.input}
+          placeholder="Index Number / Reference Number / Email"
+          value={identifier}
+          onChangeText={setIdentifier}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="default"
+        />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+        <TouchableOpacity
+          style={[styles.button, isLoading && styles.disabledButton]}
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.buttonText}>Sign In</Text>
+          )}
+        </TouchableOpacity>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <TouchableOpacity onPress={() => router.push('/register')}>
+          <Text style={styles.linkText}>Create a new account</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+          <Text style={styles.secondaryLink}>Forgot password?</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: '#ffffff',
   },
-  safeArea: {
+  content: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    paddingHorizontal: 24,
   },
   title: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#1e3a8a',
+    marginBottom: 8,
     textAlign: 'center',
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    fontSize: 16,
+    color: '#666666',
+    marginBottom: 32,
+    textAlign: 'center',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  input: {
+    height: 52,
+    borderWidth: 1,
+    borderColor: '#dddddd',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    fontSize: 16,
+    backgroundColor: '#fafafa',
+  },
+  button: {
+    height: 52,
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  disabledButton: {
+    backgroundColor: '#93c5fd',
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  linkText: {
+    marginTop: 22,
+    textAlign: 'center',
+    color: '#2563eb',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  secondaryLink: {
+    marginTop: 12,
+    textAlign: 'center',
+    color: '#6b7280',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
