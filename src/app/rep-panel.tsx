@@ -73,7 +73,10 @@ export default function RepPanel() {
                             </Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.actionCard}>
+                        <TouchableOpacity
+                            style={styles.actionCard}
+                            onPress={() => router.push('/add-assignment')}
+                        >
                             <Text style={styles.actionTitle}>Add Assignment</Text>
                             <Text style={styles.actionText}>
                                 Record assignment details, due dates, and submission instructions.
