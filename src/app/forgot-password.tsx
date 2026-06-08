@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/colors';
 import { router } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -21,30 +22,30 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 24,
         justifyContent: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: AppColors.background,
     },
     title: {
         fontSize: 30,
         fontWeight: 'bold',
-        color: '#1e3a8a',
+        color: AppColors.primary,
         marginBottom: 12,
         textAlign: 'center',
     },
     text: {
         fontSize: 16,
-        color: '#4b5563',
+        color: AppColors.mutedText,
         textAlign: 'center',
         marginBottom: 24,
     },
     button: {
         height: 52,
-        backgroundColor: '#2563eb',
+        backgroundColor: AppColors.primary,
         borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
     buttonText: {
-        color: '#ffffff',
+        color: AppColors.card,
         fontSize: 16,
         fontWeight: '700',
     },

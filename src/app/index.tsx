@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/colors';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useState } from 'react';
@@ -135,6 +136,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Index Number / Reference Number / Email"
+          placeholderTextColor={AppColors.mutedText}
           value={identifier}
           onChangeText={setIdentifier}
           autoCapitalize="none"
@@ -145,6 +147,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor={AppColors.mutedText}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -156,7 +159,7 @@ export default function LoginScreen() {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={AppColors.card} />
           ) : (
             <Text style={styles.buttonText}>Sign In</Text>
           )}
@@ -177,7 +180,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: AppColors.background,
   },
   content: {
     flex: 1,
@@ -187,53 +190,54 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#1e3a8a',
+    color: AppColors.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666666',
+    color: AppColors.mutedText,
     marginBottom: 32,
     textAlign: 'center',
   },
   input: {
     height: 52,
     borderWidth: 1,
-    borderColor: '#dddddd',
+    borderColor: AppColors.border,
     borderRadius: 10,
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
-    backgroundColor: '#fafafa',
+    backgroundColor: AppColors.card,
+    color: AppColors.text,
   },
   button: {
     height: 52,
-    backgroundColor: '#2563eb',
+    backgroundColor: AppColors.primary,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 4,
   },
   disabledButton: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: AppColors.primaryDark,
   },
   buttonText: {
-    color: '#ffffff',
+    color: AppColors.card,
     fontSize: 16,
     fontWeight: '700',
   },
   linkText: {
     marginTop: 22,
     textAlign: 'center',
-    color: '#2563eb',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '600',
   },
   secondaryLink: {
     marginTop: 12,
     textAlign: 'center',
-    color: '#6b7280',
+    color: AppColors.mutedText,
     fontSize: 14,
     fontWeight: '500',
   },

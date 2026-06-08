@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/colors';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -9,7 +10,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity
+    TouchableOpacity,
 } from 'react-native';
 
 type RegisterRequest = {
@@ -141,6 +142,7 @@ export default function RegisterScreen() {
                 <TextInput
                     style={styles.input}
                     placeholder="Full Name"
+                    placeholderTextColor={AppColors.mutedText}
                     value={fullName}
                     onChangeText={setFullName}
                     autoCapitalize="words"
@@ -149,6 +151,7 @@ export default function RegisterScreen() {
                 <TextInput
                     style={styles.input}
                     placeholder="Index Number"
+                    placeholderTextColor={AppColors.mutedText}
                     value={indexNumber}
                     onChangeText={setIndexNumber}
                     autoCapitalize="characters"
@@ -157,7 +160,8 @@ export default function RegisterScreen() {
 
                 <TextInput
                     style={styles.input}
-                    placeholder="Reference Number"
+                    placeholder="Student ID / Reference Number"
+                    placeholderTextColor={AppColors.mutedText}
                     value={referenceNumber}
                     onChangeText={setReferenceNumber}
                     autoCapitalize="characters"
@@ -167,6 +171,7 @@ export default function RegisterScreen() {
                 <TextInput
                     style={styles.input}
                     placeholder="Email"
+                    placeholderTextColor={AppColors.mutedText}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -177,6 +182,7 @@ export default function RegisterScreen() {
                 <TextInput
                     style={styles.input}
                     placeholder="Programme"
+                    placeholderTextColor={AppColors.mutedText}
                     value={programme}
                     onChangeText={setProgramme}
                     autoCapitalize="words"
@@ -185,6 +191,7 @@ export default function RegisterScreen() {
                 <TextInput
                     style={styles.input}
                     placeholder="Level"
+                    placeholderTextColor={AppColors.mutedText}
                     value={level}
                     onChangeText={setLevel}
                     keyboardType="number-pad"
@@ -193,6 +200,7 @@ export default function RegisterScreen() {
                 <TextInput
                     style={styles.input}
                     placeholder="Password"
+                    placeholderTextColor={AppColors.mutedText}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -201,6 +209,7 @@ export default function RegisterScreen() {
                 <TextInput
                     style={styles.input}
                     placeholder="Confirm Password"
+                    placeholderTextColor={AppColors.mutedText}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry
@@ -212,7 +221,7 @@ export default function RegisterScreen() {
                     disabled={isLoading}
                 >
                     {isLoading ? (
-                        <ActivityIndicator color="#ffffff" />
+                        <ActivityIndicator color={AppColors.card} />
                     ) : (
                         <Text style={styles.buttonText}>Create Account</Text>
                     )}
@@ -229,7 +238,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: AppColors.background,
     },
     scrollContent: {
         flexGrow: 1,
@@ -240,46 +249,47 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#1e3a8a',
+        color: AppColors.primary,
         textAlign: 'center',
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
-        color: '#666666',
+        color: AppColors.mutedText,
         textAlign: 'center',
         marginBottom: 28,
     },
     input: {
         height: 52,
         borderWidth: 1,
-        borderColor: '#dddddd',
+        borderColor: AppColors.border,
         borderRadius: 10,
         paddingHorizontal: 16,
         marginBottom: 14,
         fontSize: 16,
-        backgroundColor: '#fafafa',
+        backgroundColor: AppColors.card,
+        color: AppColors.text,
     },
     button: {
         height: 52,
-        backgroundColor: '#2563eb',
+        backgroundColor: AppColors.primary,
         borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 8,
     },
     disabledButton: {
-        backgroundColor: '#93c5fd',
+        backgroundColor: AppColors.primaryDark,
     },
     buttonText: {
-        color: '#ffffff',
+        color: AppColors.card,
         fontSize: 16,
         fontWeight: '700',
     },
     linkText: {
         marginTop: 20,
         textAlign: 'center',
-        color: '#2563eb',
+        color: AppColors.primary,
         fontSize: 15,
         fontWeight: '600',
     },
