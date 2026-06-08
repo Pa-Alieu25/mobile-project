@@ -108,11 +108,6 @@ export default function LoginScreen() {
         return;
       }
 
-      if (data.user.role === 'admin') {
-        router.replace('/admin-panel');
-        return;
-      }
-
       Alert.alert('Login failed', 'Your account role is not recognized.');
     } catch (error) {
       Alert.alert(
@@ -176,7 +171,6 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
