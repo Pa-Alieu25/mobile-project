@@ -128,7 +128,10 @@ export default function StudentDashboard() {
                             <Text style={styles.actionText}>Find your exam venue using your index number.</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.actionCard}>
+                        <TouchableOpacity
+                            style={styles.actionCard}
+                            onPress={() => router.push('/assignments')}
+                        >
                             <Text style={styles.actionTitle}>Assignments</Text>
                             <Text style={styles.actionText}>Track deadlines and completed work.</Text>
                         </TouchableOpacity>
