@@ -86,7 +86,10 @@ export default function RepPanel() {
                             </Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.actionCard}>
+                        <TouchableOpacity
+                            style={styles.actionCard}
+                            onPress={() => router.push('/manage-exam-venues')}
+                        >
                             <Text style={styles.actionTitle}>Upload Exam Venue Info</Text>
                             <Text style={styles.actionText}>
                                 Add exam venues so students can search and prepare early.

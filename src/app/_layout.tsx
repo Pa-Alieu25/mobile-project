@@ -4,6 +4,7 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="exam-venue-search" />
+      <Stack.Screen name="manage-exam-venues" />
       <Stack.Screen name="manage-timetable" />
       <Stack.Screen name="timetable" />
       <Stack.Screen name="assignments" />
