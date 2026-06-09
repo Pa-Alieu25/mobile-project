@@ -126,7 +126,10 @@ export default function StudentDashboard() {
                             <Text style={styles.actionText}>Check today, tomorrow, and weekly classes.</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.actionCard}>
+                        <TouchableOpacity
+                            style={styles.actionCard}
+                            onPress={() => router.push('/exam-venue-search')}
+                        >
                             <Text style={styles.actionTitle}>Exam Venue Search</Text>
                             <Text style={styles.actionText}>Find your exam venue using your index number.</Text>
                         </TouchableOpacity>
