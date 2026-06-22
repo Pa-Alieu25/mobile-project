@@ -22,15 +22,19 @@ type SelectedFile = {
     size?: number;
 };
 
+type ExamVenueStatus = 'pending' | 'confirmed';
+
 export default function ManageExamVenuesScreen() {
     const [courseCode, setCourseCode] = useState('');
     const [courseTitle, setCourseTitle] = useState('');
     const [examDate, setExamDate] = useState('');
     const [examTime, setExamTime] = useState('');
     const [venue, setVenue] = useState('');
+    const [buildingOrBlock, setBuildingOrBlock] = useState('');
+    const [roomOrHall, setRoomOrHall] = useState('');
     const [startNumber, setStartNumber] = useState('');
     const [endNumber, setEndNumber] = useState('');
-    const [note, setNote] = useState('');
+    const [status, setStatus] = useState<ExamVenueStatus>('confirmed');
     const [proofFile, setProofFile] = useState<SelectedFile | null>(null);
 
     const handleSelectProofFile = async () => {
@@ -59,6 +63,7 @@ export default function ManageExamVenuesScreen() {
         const cleanedExamDate = examDate.trim();
         const cleanedExamTime = examTime.trim();
         const cleanedVenue = venue.trim();
+        const cleanedBuildingOrBlock = buildingOrBlock.trim();
         const cleanedStartNumber = startNumber.trim();
         const cleanedEndNumber = endNumber.trim();
 
@@ -68,12 +73,13 @@ export default function ManageExamVenuesScreen() {
             !cleanedExamDate ||
             !cleanedExamTime ||
             !cleanedVenue ||
+            !cleanedBuildingOrBlock ||
             !cleanedStartNumber ||
             !cleanedEndNumber
         ) {
             Alert.alert(
                 'Missing details',
-                'Please enter the course details, exam time, venue, and index/reference number range.'
+                'Please enter the course details, exam time, venue, building/block, and index/reference number range.'
             );
             return;
         }
@@ -107,9 +113,11 @@ export default function ManageExamVenuesScreen() {
         setExamDate('');
         setExamTime('');
         setVenue('');
+        setBuildingOrBlock('');
+        setRoomOrHall('');
         setStartNumber('');
         setEndNumber('');
-        setNote('');
+        setStatus('confirmed');
         setProofFile(null);
     };
 
@@ -174,6 +182,8 @@ export default function ManageExamVenuesScreen() {
                             onChangeText={setExamTime}
                         />
 
+                        <Text style={styles.sectionTitle}>Venue Details</Text>
+
                         <Text style={styles.label}>Venue</Text>
                         <TextInput
                             style={styles.input}
@@ -183,9 +193,28 @@ export default function ManageExamVenuesScreen() {
                             onChangeText={setVenue}
                         />
 
+                        <Text style={styles.label}>Building / Block</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter building or block"
+                            placeholderTextColor={AppColors.mutedText}
+                            value={buildingOrBlock}
+                            onChangeText={setBuildingOrBlock}
+                        />
+
+                        <Text style={styles.label}>Room / Hall Optional</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter room or hall if available"
+                            placeholderTextColor={AppColors.mutedText}
+                            value={roomOrHall}
+                            onChangeText={setRoomOrHall}
+                        />
+
                         <Text style={styles.sectionTitle}>Index / Reference Range</Text>
                         <Text style={styles.helperText}>
-                            Enter the number range posted at the exam room entrance.
+                            Enter the index/reference number range from the official exam
+                            venue notice.
                         </Text>
 
                         <View style={styles.rangeRow}>
@@ -214,16 +243,43 @@ export default function ManageExamVenuesScreen() {
                             </View>
                         </View>
 
-                        <Text style={styles.label}>Note</Text>
-                        <TextInput
-                            style={styles.noteInput}
-                            placeholder="Add extra instruction if needed"
-                            placeholderTextColor={AppColors.mutedText}
-                            value={note}
-                            onChangeText={setNote}
-                            multiline
-                            textAlignVertical="top"
-                        />
+                        <Text style={styles.sectionTitle}>Status</Text>
+
+                        <View style={styles.statusRow}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.statusButton,
+                                    status === 'confirmed' && styles.activeStatusButton,
+                                ]}
+                                onPress={() => setStatus('confirmed')}
+                            >
+                                <Text
+                                    style={[
+                                        styles.statusButtonText,
+                                        status === 'confirmed' && styles.activeStatusButtonText,
+                                    ]}
+                                >
+                                    Confirmed
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.statusButton,
+                                    status === 'pending' && styles.activeStatusButton,
+                                ]}
+                                onPress={() => setStatus('pending')}
+                            >
+                                <Text
+                                    style={[
+                                        styles.statusButtonText,
+                                        status === 'pending' && styles.activeStatusButtonText,
+                                    ]}
+                                >
+                                    Pending
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
 
                         <Text style={styles.label}>Photo / PDF Proof</Text>
                         <TouchableOpacity style={styles.fileButton} onPress={handleSelectProofFile}>
@@ -333,18 +389,32 @@ const styles = StyleSheet.create({
     rangeInputWrapper: {
         flex: 1,
     },
-    noteInput: {
-        minHeight: 100,
+    statusRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 18,
+    },
+    statusButton: {
+        flex: 1,
+        height: 46,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: AppColors.border,
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        marginBottom: 18,
-        fontSize: 15,
-        color: AppColors.text,
-        backgroundColor: AppColors.background,
-        lineHeight: 21,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: AppColors.card,
+    },
+    activeStatusButton: {
+        backgroundColor: AppColors.primary,
+        borderColor: AppColors.primary,
+    },
+    statusButtonText: {
+        color: AppColors.mutedText,
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    activeStatusButtonText: {
+        color: AppColors.card,
     },
     fileButton: {
         height: 50,
