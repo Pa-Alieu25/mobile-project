@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://10.100.36.180:8080/api';
+export const API_BASE_URL = 'http://10.0.2.2:8080/api';
 
 // Local development URL:
 // Android emulator uses 10.0.2.2 to reach the computer's localhost.
