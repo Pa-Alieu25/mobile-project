@@ -38,15 +38,19 @@ public class AuthService {
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmail(request.email()))
             throw new RuntimeException("An account with this email already exists.");
-        }
-        if (userRepository.existsByIndexNumber(request.indexNumber())) {
+        if (userRepository.existsByIndexNumber(request.indexNumber()))
             throw new RuntimeException("An account with this index number already exists.");
-        }
-        if (userRepository.existsByReferenceNumber(request.referenceNumber())) {
+        if (userRepository.existsByReferenceNumber(request.referenceNumber()))
             throw new RuntimeException("An account with this reference number already exists.");
+
+        UserRole role = UserRole.STUDENT;
+        if ("course_rep".equalsIgnoreCase(request.role())) {
+            role = UserRole.COURSE_REP;
         }
+
+        String status = role == UserRole.COURSE_REP ? "PENDING" : "ACTIVE";
 
         User user = User.builder()
             .fullName(request.fullName())
@@ -57,8 +61,8 @@ public class AuthService {
             .programme(request.programme())
             .level(request.level())
             .classGroup(request.classGroup())
-            .role(UserRole.STUDENT)
-            .status("ACTIVE")
+            .role(role)
+            .status(status)
             .build();
 
         return UserResponse.from(userRepository.save(user));
@@ -68,12 +72,10 @@ public class AuthService {
         User user = userRepository.findByIdentifier(request.identifier())
             .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
-        if ("PENDING".equals(user.getStatus())) {
+        if ("PENDING".equals(user.getStatus()))
             throw new BadCredentialsException("Your course rep request is pending admin approval.");
-        }
-        if ("REJECTED".equals(user.getStatus())) {
+        if ("REJECTED".equals(user.getStatus()))
             throw new BadCredentialsException("Your course rep request was rejected. Contact admin.");
-        }
 
         authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(user.getEmail(), request.password()));
