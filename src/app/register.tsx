@@ -16,7 +16,7 @@ import {
 
 type Role = 'student' | 'course_rep';
 
-const API_URL = 'https://mobile-project-production.up.railway.app/api';
+const API_URL = 'http://10.0.2.2:8080/api';
 
 function getPasswordStrength(password: string): { label: string; color: string } {
     if (password.length === 0) return { label: '', color: 'transparent' };
