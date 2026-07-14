@@ -1,12 +1,12 @@
 import { AppColors } from '@/constants/colors';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -30,15 +30,7 @@ type LoginResponse = {
   };
 };
 
-const API_URL = 'https://mobile-project-production.up.railway.app/api';
-
-async function saveItem(key: string, value: string) {
-  if (Platform.OS === 'web') {
-    localStorage.setItem(key, value);
-  } else {
-    await SecureStore.setItemAsync(key, value);
-  }
-}
+const API_URL = 'http://10.0.2.2:8080/api';
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
@@ -56,6 +48,7 @@ export default function LoginScreen() {
 
     try {
       setIsLoading(true);
+
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,16 +63,16 @@ export default function LoginScreen() {
 
       const data: LoginResponse = await response.json();
 
-      await saveItem('authToken', data.token);
-      await saveItem('userId', String(data.user.id));
-      await saveItem('userName', data.user.fullName);
-      await saveItem('userEmail', data.user.email);
-      await saveItem('userRole', data.user.role);
+      await SecureStore.setItemAsync('authToken', data.token);
+      await SecureStore.setItemAsync('userId', String(data.user.id));
+      await SecureStore.setItemAsync('userName', data.user.fullName);
+      await SecureStore.setItemAsync('userEmail', data.user.email);
+      await SecureStore.setItemAsync('userRole', data.user.role);
 
-      if (data.user.indexNumber) await saveItem('indexNumber', data.user.indexNumber);
-      if (data.user.referenceNumber) await saveItem('referenceNumber', data.user.referenceNumber);
-      if (data.user.programme) await saveItem('programme', data.user.programme);
-      if (data.user.level) await saveItem('level', data.user.level);
+      if (data.user.indexNumber) await SecureStore.setItemAsync('indexNumber', data.user.indexNumber);
+      if (data.user.referenceNumber) await SecureStore.setItemAsync('referenceNumber', data.user.referenceNumber);
+      if (data.user.programme) await SecureStore.setItemAsync('programme', data.user.programme);
+      if (data.user.level) await SecureStore.setItemAsync('level', data.user.level);
 
       if (data.user.role === 'student') { router.replace('/student-dashboard'); return; }
       if (data.user.role === 'course_rep') { router.replace('/rep-panel'); return; }
@@ -99,10 +92,30 @@ export default function LoginScreen() {
         <Text style={styles.title}>ClassMate</Text>
         <Text style={styles.subtitle}>Sign in to your academic dashboard</Text>
 
-        <TextInput style={styles.input} placeholder="Index Number / Reference Number / Email" placeholderTextColor={AppColors.mutedText} value={identifier} onChangeText={setIdentifier} autoCapitalize="none" autoCorrect={false} />
-        <TextInput style={styles.input} placeholder="Password" placeholderTextColor={AppColors.mutedText} value={password} onChangeText={setPassword} secureTextEntry />
+        <TextInput
+          style={styles.input}
+          placeholder="Index Number / Reference Number / Email"
+          placeholderTextColor={AppColors.mutedText}
+          value={identifier}
+          onChangeText={setIdentifier}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
 
-        <TouchableOpacity style={[styles.button, isLoading && styles.disabledButton]} onPress={handleLogin} disabled={isLoading}>
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={AppColors.mutedText}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <TouchableOpacity
+          style={[styles.button, isLoading && styles.disabledButton]}
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
           {isLoading ? <ActivityIndicator color={AppColors.card} /> : <Text style={styles.buttonText}>Sign In</Text>}
         </TouchableOpacity>
 
