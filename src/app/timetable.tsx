@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { NavigateButton } from '@/components/navigate-button';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
@@ -228,6 +229,8 @@ export default function TimetableScreen() {
                                 <Text style={styles.classDetail}>Venue: {record.venue}</Text>
                                 <Text style={styles.classDetail}>Lecturer: {record.lecturer}</Text>
                                 <Text style={styles.classDetail}>Class Group: {record.classGroup}</Text>
+
+                                {record.status !== 'cancelled' && <NavigateButton query={record.venue} />}
                             </View>
                         ))
                     )}
