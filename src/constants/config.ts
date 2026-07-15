@@ -1,5 +1,7 @@
-export const API_BASE_URL = 'http://10.0.2.2:8080/api';
+// Single source of truth for the backend API base URL.
+export const API_BASE_URL = 'https://mobile-project-production.up.railway.app/api';
 
-// Local development URL:
+// Local development:
+// Point API_BASE_URL at your local Spring Boot backend instead of the deployed one.
 // Android emulator uses 10.0.2.2 to reach the computer's localhost.
-// When the Spring Boot backend is deployed, replace this with the deployed API URL.
+//   export const API_BASE_URL = 'http://10.0.2.2:8080/api';

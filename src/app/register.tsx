@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { API_BASE_URL as API_URL } from '@/constants/config';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -15,8 +16,6 @@ import {
 } from 'react-native';
 
 type Role = 'student' | 'course_rep';
-
-const API_URL = 'https://mobile-project-production.up.railway.app/api';
 
 function getPasswordStrength(password: string): { label: string; color: string } {
     if (password.length === 0) return { label: '', color: 'transparent' };

@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { API_BASE_URL as API_URL } from '@/constants/config';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
@@ -29,8 +30,6 @@ type LoginResponse = {
     level?: string;
   };
 };
-
-const API_URL = 'https://mobile-project-production.up.railway.app/api';
 
 async function saveItem(key: string, value: string) {
   if (Platform.OS === 'web') {

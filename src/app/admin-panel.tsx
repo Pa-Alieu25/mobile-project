@@ -1,11 +1,10 @@
 import { AppColors } from '@/constants/colors';
+import { API_BASE_URL as API_URL } from '@/constants/config';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const API_URL = 'https://mobile-project-production.up.railway.app/api';
 
 type PendingUser = {
     id: number;
