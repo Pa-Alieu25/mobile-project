@@ -28,7 +28,12 @@ type TimetableRecord = {
     status: string;
 };
 
-type Assignment = { id: number };
+type Assignment = {
+    id: number;
+    courseCode: string;
+    title: string;
+    dueDate: string;
+};
 
 type Announcement = {
     id: number;
@@ -55,8 +60,8 @@ function parseTimeToMinutes(time: string): number | null {
 export default function StudentDashboard() {
     const { signOut, token } = useAuth();
     const [studentName, setStudentName] = useState('Student');
-    const [programme, setProgramme] = useState('Programme not set');
-    const [level, setLevel] = useState('Level not set');
+    const [programme, setProgramme] = useState('');
+    const [level, setLevel] = useState('');
 
     const [timetable, setTimetable] = useState<TimetableRecord[]>([]);
     const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -88,7 +93,7 @@ export default function StudentDashboard() {
     }, []);
 
     const loadDashboard = useCallback(async () => {
-        // One screen failing to load should not blank out the others.
+        // One request failing should not blank out the others.
         const [tt, asg, ann] = await Promise.allSettled([
             fetchWithCache<TimetableRecord[]>(CacheKeys.timetable, '/timetable', token),
             fetchWithCache<Assignment[]>(CacheKeys.assignments, '/assignments', token),
@@ -120,7 +125,10 @@ export default function StudentDashboard() {
     const todayName = weekDays[new Date().getDay()];
 
     const todaysClasses = useMemo(
-        () => timetable.filter((c) => c.dayOfWeek === todayName && c.status !== 'cancelled'),
+        () =>
+            timetable
+                .filter((c) => c.dayOfWeek === todayName && c.status !== 'cancelled')
+                .sort((a, b) => (parseTimeToMinutes(a.startTime) ?? 0) - (parseTimeToMinutes(b.startTime) ?? 0)),
         [timetable, todayName]
     );
 
@@ -133,8 +141,8 @@ export default function StudentDashboard() {
             .sort((a, b) => a.start - b.start)[0]?.record ?? null;
     }, [todaysClasses]);
 
-    const pendingCount = useMemo(
-        () => assignments.filter((a) => !completedIds.has(a.id)).length,
+    const pendingAssignments = useMemo(
+        () => assignments.filter((a) => !completedIds.has(a.id)),
         [assignments, completedIds]
     );
 
@@ -151,12 +159,6 @@ export default function StudentDashboard() {
 
     const latestAnnouncement = announcements[0] ?? null;
 
-    const classesTodayContext = () => {
-        if (todaysClasses.length === 0) return 'No classes today';
-        if (nextClass) return `Next: ${nextClass.courseCode} · ${nextClass.startTime}`;
-        return 'All done for today';
-    };
-
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView
@@ -170,18 +172,15 @@ export default function StudentDashboard() {
                 <View style={styles.header}>
                     <View style={styles.headerText}>
                         <Text style={styles.greeting}>Hello, {studentName}</Text>
-                        <Text style={styles.subGreeting}>{todayName}</Text>
+                        <Text style={styles.subGreeting}>
+                            {todayName}
+                            {programme ? ` · ${programme}${level ? ` · Level ${level}` : ''}` : ''}
+                        </Text>
                     </View>
 
                     <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
                         <Text style={styles.signOutText}>Sign out</Text>
                     </TouchableOpacity>
-                </View>
-
-                <View style={styles.profileCard}>
-                    <Text style={styles.profileLabel}>Academic Profile</Text>
-                    <Text style={styles.profileText}>{programme}</Text>
-                    <Text style={styles.profileSubText}>{level}</Text>
                 </View>
 
                 {isOffline && <OfflineBanner />}
@@ -192,92 +191,127 @@ export default function StudentDashboard() {
                     </View>
                 ) : (
                     <>
+                        {/* Next class — the single most useful thing */}
                         <View style={styles.nextClassCard}>
                             <Text style={styles.nextClassLabel}>Next class</Text>
                             {nextClass ? (
                                 <>
                                     <Text style={styles.nextClassTitle}>{nextClass.courseTitle}</Text>
                                     <Text style={styles.nextClassMeta}>
-                                        {nextClass.startTime} – {nextClass.endTime}
+                                        {nextClass.startTime} – {nextClass.endTime} · {nextClass.venue}
                                     </Text>
-                                    <Text style={styles.nextClassMeta}>{nextClass.venue}</Text>
                                 </>
                             ) : (
                                 <Text style={styles.nextClassEmpty}>
                                     {todaysClasses.length === 0
-                                        ? 'You have no classes scheduled today.'
-                                        : 'No more classes today.'}
+                                        ? 'Nothing scheduled today.'
+                                        : "That's all your classes for today."}
                                 </Text>
                             )}
                         </View>
 
-                        <View style={styles.metricsRow}>
-                            <TouchableOpacity style={styles.metricCard} onPress={() => router.push('/timetable')}>
-                                <Text style={styles.metricLabel}>Classes today</Text>
-                                <Text style={styles.metricValue}>{todaysClasses.length}</Text>
-                                <Text style={styles.metricContext}>{classesTodayContext()}</Text>
-                            </TouchableOpacity>
+                        {/* Today's schedule as real content */}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Today&apos;s schedule</Text>
+                                <TouchableOpacity onPress={() => router.push('/timetable')}>
+                                    <Text style={styles.sectionLink}>Timetable</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                            <TouchableOpacity style={styles.metricCard} onPress={() => router.push('/assignments')}>
-                                <Text style={styles.metricLabel}>Assignments</Text>
-                                <Text style={styles.metricValue}>{pendingCount}</Text>
-                                <Text style={styles.metricContext}>
-                                    {pendingCount === 0 ? 'All caught up' : pendingCount === 1 ? '1 to complete' : `${pendingCount} to complete`}
-                                </Text>
-                            </TouchableOpacity>
+                            {todaysClasses.length === 0 ? (
+                                <Text style={styles.emptyLine}>No classes scheduled for today.</Text>
+                            ) : (
+                                todaysClasses.map((c) => (
+                                    <View key={c.id} style={styles.rowCard}>
+                                        <View style={styles.timePill}>
+                                            <Text style={styles.timePillText}>{c.startTime}</Text>
+                                        </View>
+                                        <View style={styles.rowBody}>
+                                            <Text style={styles.rowTitle}>{c.courseTitle}</Text>
+                                            <Text style={styles.rowMeta}>{c.courseCode} · {c.venue}</Text>
+                                        </View>
+                                    </View>
+                                ))
+                            )}
                         </View>
 
+                        {/* Assignments due */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Latest announcement</Text>
-                            <TouchableOpacity style={styles.card} onPress={() => router.push('/announcements')}>
-                                {latestAnnouncement ? (
-                                    <>
-                                        <Text style={styles.announcementCategory}>{latestAnnouncement.category}</Text>
-                                        <Text style={styles.announcementTitle}>{latestAnnouncement.title}</Text>
-                                        <Text style={styles.announcementMeta}>
-                                            {latestAnnouncement.postedBy} · {latestAnnouncement.postedAt}
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Assignments due</Text>
+                                <TouchableOpacity onPress={() => router.push('/assignments')}>
+                                    <Text style={styles.sectionLink}>All</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {pendingAssignments.length === 0 ? (
+                                <Text style={styles.emptyLine}>You&apos;re all caught up.</Text>
+                            ) : (
+                                <>
+                                    {pendingAssignments.slice(0, 3).map((a) => (
+                                        <TouchableOpacity
+                                            key={a.id}
+                                            style={styles.rowCard}
+                                            onPress={() => router.push('/assignments')}
+                                        >
+                                            <View style={styles.rowBody}>
+                                                <Text style={styles.rowTitle}>{a.title}</Text>
+                                                <Text style={styles.rowMeta}>{a.courseCode} · due {a.dueDate}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))}
+                                    {pendingAssignments.length > 3 && (
+                                        <Text style={styles.moreLine}>
+                                            +{pendingAssignments.length - 3} more
                                         </Text>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Text style={styles.emptyTitle}>No announcements yet</Text>
-                                        <Text style={styles.emptyText}>
-                                            Updates from your course rep will show here. Tap to view all.
+                                    )}
+                                </>
+                            )}
+                        </View>
+
+                        {/* Latest announcement */}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Latest announcement</Text>
+                                <TouchableOpacity onPress={() => router.push('/announcements')}>
+                                    <Text style={styles.sectionLink}>All</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {latestAnnouncement ? (
+                                <TouchableOpacity style={styles.rowCard} onPress={() => router.push('/announcements')}>
+                                    <View style={styles.rowBody}>
+                                        <Text style={styles.rowTitle}>{latestAnnouncement.title}</Text>
+                                        <Text style={styles.rowMeta}>
+                                            {latestAnnouncement.category} · {latestAnnouncement.postedAt}
                                         </Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
+                                    </View>
+                                </TouchableOpacity>
+                            ) : (
+                                <Text style={styles.emptyLine}>No announcements yet.</Text>
+                            )}
                         </View>
                     </>
                 )}
 
+                {/* Quick actions */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Quick actions</Text>
-
                     <View style={styles.actionList}>
-                        <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/timetable')}>
-                            <Text style={styles.actionTitle}>View Timetable</Text>
-                            <Text style={styles.actionText}>Check today, tomorrow, and weekly classes.</Text>
-                        </TouchableOpacity>
-
                         <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/exam-venue-search')}>
-                            <Text style={styles.actionTitle}>Exam Venue Search</Text>
-                            <Text style={styles.actionText}>Find your exam venue using your index number.</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assignments')}>
-                            <Text style={styles.actionTitle}>Assignments</Text>
-                            <Text style={styles.actionText}>Track deadlines and completed work.</Text>
+                            <Text style={styles.actionTitle}>Exam venue search</Text>
+                            <Text style={styles.actionText}>Find your exam venue by index number.</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/my-scores' as any)}>
-                            <Text style={styles.actionTitle}>Midsem Scores</Text>
+                            <Text style={styles.actionTitle}>Midsem scores</Text>
                             <Text style={styles.actionText}>View your released midsem scores.</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/profile-settings' as any)}>
-                            <Text style={styles.actionTitle}>Profile & Settings</Text>
-                            <Text style={styles.actionText}>Manage reminders, sync, and account settings.</Text>
+                            <Text style={styles.actionTitle}>Profile & settings</Text>
+                            <Text style={styles.actionText}>Reminders, subscription, and account.</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -303,14 +337,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 20,
+        marginBottom: 18,
     },
     headerText: {
         flex: 1,
         paddingRight: 12,
     },
     greeting: {
-        fontSize: 26,
+        fontSize: 24,
         fontWeight: '800',
         color: AppColors.text,
     },
@@ -332,163 +366,127 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 13,
     },
-    profileCard: {
-        backgroundColor: AppColors.primary,
-        borderRadius: 18,
-        padding: 18,
-        marginBottom: 16,
-    },
-    profileLabel: {
-        color: AppColors.accent,
-        fontSize: 13,
-        fontWeight: '700',
-        marginBottom: 8,
-    },
-    profileText: {
-        color: AppColors.card,
-        fontSize: 20,
-        fontWeight: '800',
-    },
-    profileSubText: {
-        color: AppColors.card,
-        fontSize: 14,
-        marginTop: 4,
-    },
     loadingCard: {
-        paddingVertical: 50,
+        paddingVertical: 60,
         alignItems: 'center',
     },
     nextClassCard: {
-        backgroundColor: AppColors.card,
+        backgroundColor: AppColors.primary,
         borderRadius: 18,
-        padding: 18,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-        borderLeftWidth: 4,
-        borderLeftColor: AppColors.primary,
-        marginBottom: 16,
+        padding: 20,
+        marginBottom: 22,
     },
     nextClassLabel: {
         fontSize: 12,
         fontWeight: '800',
-        color: AppColors.primary,
+        color: AppColors.accent,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        marginBottom: 8,
+        marginBottom: 10,
     },
     nextClassTitle: {
         fontSize: 20,
         fontWeight: '800',
-        color: AppColors.text,
+        color: AppColors.card,
         marginBottom: 6,
     },
     nextClassMeta: {
         fontSize: 14,
-        color: AppColors.mutedText,
-        lineHeight: 20,
+        color: AppColors.card,
+        opacity: 0.9,
     },
     nextClassEmpty: {
         fontSize: 15,
-        color: AppColors.mutedText,
+        color: AppColors.card,
+        opacity: 0.9,
         lineHeight: 21,
-    },
-    metricsRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 22,
-    },
-    metricCard: {
-        flex: 1,
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    metricLabel: {
-        fontSize: 13,
-        color: AppColors.mutedText,
-        fontWeight: '700',
-    },
-    metricValue: {
-        fontSize: 28,
-        color: AppColors.text,
-        fontWeight: '900',
-        marginTop: 6,
-    },
-    metricContext: {
-        fontSize: 12,
-        color: AppColors.mutedText,
-        marginTop: 4,
     },
     section: {
         marginBottom: 22,
     },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: '800',
         color: AppColors.text,
         marginBottom: 10,
     },
-    card: {
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    announcementCategory: {
-        alignSelf: 'flex-start',
-        backgroundColor: AppColors.background,
-        color: AppColors.primary,
-        fontSize: 12,
-        fontWeight: '800',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        overflow: 'hidden',
-        marginBottom: 8,
-    },
-    announcementTitle: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: AppColors.text,
-        marginBottom: 6,
-    },
-    announcementMeta: {
-        fontSize: 13,
-        color: AppColors.mutedText,
-    },
-    emptyTitle: {
-        fontSize: 16,
+    sectionLink: {
+        fontSize: 14,
         fontWeight: '700',
-        color: AppColors.text,
-        marginBottom: 6,
+        color: AppColors.primary,
     },
-    emptyText: {
+    emptyLine: {
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 20,
     },
-    actionList: {
+    moreLine: {
+        fontSize: 13,
+        color: AppColors.mutedText,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    rowCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: AppColors.card,
+        borderRadius: 14,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        marginBottom: 10,
         gap: 12,
+    },
+    timePill: {
+        backgroundColor: AppColors.background,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+    },
+    timePillText: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: AppColors.primary,
+    },
+    rowBody: {
+        flex: 1,
+    },
+    rowTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: AppColors.text,
+        marginBottom: 3,
+    },
+    rowMeta: {
+        fontSize: 13,
+        color: AppColors.mutedText,
+    },
+    actionList: {
+        gap: 10,
     },
     actionCard: {
         backgroundColor: AppColors.card,
-        borderRadius: 16,
+        borderRadius: 14,
         padding: 16,
         borderWidth: 1,
         borderColor: AppColors.border,
     },
     actionTitle: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '800',
         color: AppColors.primary,
-        marginBottom: 4,
+        marginBottom: 3,
     },
     actionText: {
-        fontSize: 14,
+        fontSize: 13,
         color: AppColors.mutedText,
-        lineHeight: 20,
     },
 });
