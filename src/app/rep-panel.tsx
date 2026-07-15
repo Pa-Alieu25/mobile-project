@@ -67,6 +67,7 @@ export default function RepPanel() {
         { title: 'Manage Timetable', text: 'Add or update class times, lecturers, and venues.', route: '/manage-timetable' },
         { title: 'Add Assignment', text: 'Record assignment details, due dates, and instructions.', route: '/add-assignment' },
         { title: 'Upload Exam Venue Info', text: 'Add exam venue ranges so students can search them.', route: '/manage-exam-venues' },
+        { title: 'Upload Midsem Score', text: 'Post a student’s midsem score by index number.', route: '/upload-score' },
         { title: 'Profile & Settings', text: 'Manage reminders, sync, and account settings.', route: '/profile-settings' },
     ];
 
