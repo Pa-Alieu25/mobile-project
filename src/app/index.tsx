@@ -1,13 +1,13 @@
 import { AppColors } from '@/constants/colors';
 import { API_BASE_URL as API_URL } from '@/constants/config';
+import { homeRouteForRole, useAuth, type LoginResponse } from '@/context/auth-context';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -15,34 +15,19 @@ import {
   View,
 } from 'react-native';
 
-type UserRole = 'student' | 'course_rep' | 'admin';
-
-type LoginResponse = {
-  token: string;
-  user: {
-    id: number;
-    fullName: string;
-    indexNumber?: string;
-    referenceNumber?: string;
-    email: string;
-    role: UserRole;
-    programme?: string;
-    level?: string;
-  };
-};
-
-async function saveItem(key: string, value: string) {
-  if (Platform.OS === 'web') {
-    localStorage.setItem(key, value);
-  } else {
-    await SecureStore.setItemAsync(key, value);
-  }
-}
-
 export default function LoginScreen() {
+  const { token, role, isLoading: isRestoringSession, signIn } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect to the correct home once authenticated — covers both a fresh
+  // login and a restored session on app launch.
+  useEffect(() => {
+    if (!isRestoringSession && token) {
+      router.replace(homeRouteForRole(role));
+    }
+  }, [isRestoringSession, token, role]);
 
   const handleLogin = async () => {
     const cleanedIdentifier = identifier.trim();
@@ -68,23 +53,8 @@ export default function LoginScreen() {
       }
 
       const data: LoginResponse = await response.json();
-
-      await saveItem('authToken', data.token);
-      await saveItem('userId', String(data.user.id));
-      await saveItem('userName', data.user.fullName);
-      await saveItem('userEmail', data.user.email);
-      await saveItem('userRole', data.user.role);
-
-      if (data.user.indexNumber) await saveItem('indexNumber', data.user.indexNumber);
-      if (data.user.referenceNumber) await saveItem('referenceNumber', data.user.referenceNumber);
-      if (data.user.programme) await saveItem('programme', data.user.programme);
-      if (data.user.level) await saveItem('level', data.user.level);
-
-      if (data.user.role === 'student') { router.replace('/student-dashboard'); return; }
-      if (data.user.role === 'course_rep') { router.replace('/rep-panel'); return; }
-      if (data.user.role === 'admin') { router.replace('/admin-panel'); return; }
-
-      Alert.alert('Login failed', 'Your account role is not recognized.');
+      await signIn(data);
+      // Navigation is handled by the effect above once auth state updates.
     } catch (error) {
       Alert.alert('Connection error', 'Unable to connect to the server. Please check your connection and try again.');
     } finally {

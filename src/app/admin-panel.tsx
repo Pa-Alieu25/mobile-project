@@ -1,9 +1,10 @@
 import { AppColors } from '@/constants/colors';
 import { API_BASE_URL as API_URL } from '@/constants/config';
+import { useAuth } from '@/context/auth-context';
+import { getItem } from '@/services/storage';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type PendingUser = {
@@ -15,17 +16,8 @@ type PendingUser = {
     level: string;
 };
 
-async function getItem(key: string): Promise<string | null> {
-    if (Platform.OS === 'web') return localStorage.getItem(key);
-    return await SecureStore.getItemAsync(key);
-}
-
-async function removeItem(key: string): Promise<void> {
-    if (Platform.OS === 'web') localStorage.removeItem(key);
-    else await SecureStore.deleteItemAsync(key);
-}
-
 export default function AdminPanel() {
+    const { signOut } = useAuth();
     const [adminName, setAdminName] = useState('Admin');
     const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
 
@@ -73,8 +65,7 @@ export default function AdminPanel() {
     };
 
     const handleSignOut = async () => {
-        const keys = ['authToken', 'userId', 'userName', 'userEmail', 'userRole', 'indexNumber', 'referenceNumber', 'programme', 'level'];
-        for (const key of keys) await removeItem(key);
+        await signOut();
         router.replace('/');
     };
 

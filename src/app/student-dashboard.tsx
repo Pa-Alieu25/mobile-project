@@ -1,6 +1,7 @@
 import { AppColors } from '@/constants/colors';
+import { useAuth } from '@/context/auth-context';
+import { getItem } from '@/services/storage';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import {
     ScrollView,
@@ -12,15 +13,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function StudentDashboard() {
+    const { signOut } = useAuth();
     const [studentName, setStudentName] = useState('Student');
     const [programme, setProgramme] = useState('Programme not loaded');
     const [level, setLevel] = useState('Level not loaded');
 
     useEffect(() => {
         const loadStudentProfile = async () => {
-            const storedName = await SecureStore.getItemAsync('userName');
-            const storedProgramme = await SecureStore.getItemAsync('programme');
-            const storedLevel = await SecureStore.getItemAsync('level');
+            const storedName = await getItem('userName');
+            const storedProgramme = await getItem('programme');
+            const storedLevel = await getItem('level');
 
             if (storedName) {
                 setStudentName(storedName);
@@ -39,16 +41,7 @@ export default function StudentDashboard() {
     }, []);
 
     const handleSignOut = async () => {
-        await SecureStore.deleteItemAsync('authToken');
-        await SecureStore.deleteItemAsync('userId');
-        await SecureStore.deleteItemAsync('userName');
-        await SecureStore.deleteItemAsync('userEmail');
-        await SecureStore.deleteItemAsync('userRole');
-        await SecureStore.deleteItemAsync('indexNumber');
-        await SecureStore.deleteItemAsync('referenceNumber');
-        await SecureStore.deleteItemAsync('programme');
-        await SecureStore.deleteItemAsync('level');
-
+        await signOut();
         router.replace('/');
     };
 
