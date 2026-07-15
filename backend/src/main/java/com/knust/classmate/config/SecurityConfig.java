@@ -52,6 +52,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/exam-venues/search").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
+                // Only course reps and admins can create academic records; students are read-only.
+                .requestMatchers(HttpMethod.POST, "/announcements", "/assignments", "/timetable", "/exam-venues")
+                    .hasAnyRole("COURSE_REP", "ADMIN")
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

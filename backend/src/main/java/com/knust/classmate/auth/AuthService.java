@@ -1,10 +1,12 @@
 package com.knust.classmate.auth;
 
 import com.knust.classmate.config.JwtUtil;
+import com.knust.classmate.exception.ApiException;
 import com.knust.classmate.user.User;
 import com.knust.classmate.user.UserRepository;
 import com.knust.classmate.user.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -38,12 +40,12 @@ public class AuthService {
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.email()))
-            throw new RuntimeException("An account with this email already exists.");
-        if (userRepository.existsByIndexNumber(request.indexNumber()))
-            throw new RuntimeException("An account with this index number already exists.");
-        if (userRepository.existsByReferenceNumber(request.referenceNumber()))
-            throw new RuntimeException("An account with this reference number already exists.");
+        if (userRepository.existsByEmail(request.email().toLowerCase()))
+            throw new ApiException(HttpStatus.CONFLICT, "An account with this email already exists.");
+        if (userRepository.existsByIndexNumber(request.indexNumber().toUpperCase()))
+            throw new ApiException(HttpStatus.CONFLICT, "An account with this index number already exists.");
+        if (userRepository.existsByReferenceNumber(request.referenceNumber().toUpperCase()))
+            throw new ApiException(HttpStatus.CONFLICT, "An account with this reference number already exists.");
 
         UserRole role = UserRole.STUDENT;
         if ("course_rep".equalsIgnoreCase(request.role())) {
@@ -72,13 +74,14 @@ public class AuthService {
         User user = userRepository.findByIdentifier(request.identifier())
             .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
-        if ("PENDING".equals(user.getStatus()))
-            throw new BadCredentialsException("Your course rep request is pending admin approval.");
-        if ("REJECTED".equals(user.getStatus()))
-            throw new BadCredentialsException("Your course rep request was rejected. Contact admin.");
-
+        // Verify the password first so account status cannot be probed without valid credentials.
         authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(user.getEmail(), request.password()));
+
+        if ("PENDING".equals(user.getStatus()))
+            throw new ApiException(HttpStatus.FORBIDDEN, "Your course rep request is pending admin approval.");
+        if ("REJECTED".equals(user.getStatus()))
+            throw new ApiException(HttpStatus.FORBIDDEN, "Your course rep request was rejected. Contact admin.");
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);

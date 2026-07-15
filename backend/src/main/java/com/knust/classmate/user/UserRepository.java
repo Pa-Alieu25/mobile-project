@@ -16,7 +16,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByIndexNumber(String indexNumber);
     boolean existsByReferenceNumber(String referenceNumber);
 
-    @Query("SELECT u FROM User u WHERE u.indexNumber = :identifier " +
-           "OR u.referenceNumber = :identifier OR u.email = :identifier")
+    // Case-insensitive so a user can sign in regardless of how they type their
+    // email, index number or reference number (stored normalized at registration).
+    @Query("SELECT u FROM User u WHERE LOWER(u.indexNumber) = LOWER(:identifier) " +
+           "OR LOWER(u.referenceNumber) = LOWER(:identifier) OR LOWER(u.email) = LOWER(:identifier)")
     Optional<User> findByIdentifier(@Param("identifier") String identifier);
 }
