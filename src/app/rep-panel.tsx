@@ -1,6 +1,6 @@
 import { AppColors } from '@/constants/colors';
+import { useAuth } from '@/context/auth-context';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import {
     ScrollView,
     StyleSheet,
@@ -11,17 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RepPanel() {
-    const handleSignOut = async () => {
-        await SecureStore.deleteItemAsync('authToken');
-        await SecureStore.deleteItemAsync('userId');
-        await SecureStore.deleteItemAsync('userName');
-        await SecureStore.deleteItemAsync('userEmail');
-        await SecureStore.deleteItemAsync('userRole');
-        await SecureStore.deleteItemAsync('indexNumber');
-        await SecureStore.deleteItemAsync('referenceNumber');
-        await SecureStore.deleteItemAsync('programme');
-        await SecureStore.deleteItemAsync('level');
+    const { signOut } = useAuth();
 
+    const handleSignOut = async () => {
+        await signOut();
         router.replace('/');
     };
 

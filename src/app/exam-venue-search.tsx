@@ -1,7 +1,10 @@
 import { AppColors } from '@/constants/colors';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     ScrollView,
     StyleSheet,
@@ -11,8 +14,6 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-type ExamVenueStatus = 'pending' | 'confirmed';
 
 type ExamVenueRecord = {
     id: number;
@@ -25,57 +26,58 @@ type ExamVenueRecord = {
     roomOrHall?: string;
     startIndex: number;
     endIndex: number;
-    status: ExamVenueStatus;
+    status: string;
 };
 
-// Backend data will be loaded into this list later.
-// Keep this empty for now so the app does not show fake exam venue records.
-const examVenueRecords: ExamVenueRecord[] = [];
-
-function formatStatusLabel(status: ExamVenueStatus) {
+function formatStatusLabel(status: string) {
     if (status === 'confirmed') return 'Confirmed';
     return 'Pending';
 }
 
 export default function ExamVenueSearchScreen() {
+    const { token } = useAuth();
     const [searchNumber, setSearchNumber] = useState('');
     const [matchedVenues, setMatchedVenues] = useState<ExamVenueRecord[]>([]);
     const [hasSearched, setHasSearched] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    function handleSearchVenue() {
+    async function handleSearchVenue() {
         const cleanedNumber = searchNumber.trim();
 
         if (!cleanedNumber) {
-            Alert.alert(
-                'Missing number',
-                'Please enter your index number or reference number.'
-            );
+            Alert.alert('Missing number', 'Please enter your index number.');
             return;
         }
 
-        const numericValue = Number(cleanedNumber);
-
-        if (Number.isNaN(numericValue)) {
-            Alert.alert(
-                'Invalid number',
-                'Please enter numbers only. Example: 6170524'
-            );
+        if (Number.isNaN(Number(cleanedNumber))) {
+            Alert.alert('Invalid number', 'Please enter numbers only. Example: 6170524');
             return;
         }
 
-        const foundVenues = examVenueRecords.filter(
-            (record) =>
-                numericValue >= record.startIndex && numericValue <= record.endIndex
-        );
-
-        setMatchedVenues(foundVenues);
-        setHasSearched(true);
+        try {
+            setIsSearching(true);
+            setError(null);
+            const results = await apiRequest<ExamVenueRecord[]>(
+                `/exam-venues/search?number=${encodeURIComponent(cleanedNumber)}`,
+                { token }
+            );
+            setMatchedVenues(results);
+            setHasSearched(true);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to search right now.');
+            setMatchedVenues([]);
+            setHasSearched(true);
+        } finally {
+            setIsSearching(false);
+        }
     }
 
     function handleClearSearch() {
         setSearchNumber('');
         setMatchedVenues([]);
         setHasSearched(false);
+        setError(null);
     }
 
     return (
@@ -106,8 +108,16 @@ export default function ExamVenueSearchScreen() {
                         keyboardType="number-pad"
                     />
 
-                    <TouchableOpacity style={styles.searchButton} onPress={handleSearchVenue}>
-                        <Text style={styles.searchButtonText}>Search Venue</Text>
+                    <TouchableOpacity
+                        style={[styles.searchButton, isSearching && styles.disabledButton]}
+                        onPress={handleSearchVenue}
+                        disabled={isSearching}
+                    >
+                        {isSearching ? (
+                            <ActivityIndicator color={AppColors.card} />
+                        ) : (
+                            <Text style={styles.searchButtonText}>Search Venue</Text>
+                        )}
                     </TouchableOpacity>
 
                     {hasSearched && (
@@ -117,13 +127,19 @@ export default function ExamVenueSearchScreen() {
                     )}
                 </View>
 
-                {!hasSearched && (
+                {!hasSearched && !error && (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>Search for your exam venue</Text>
                         <Text style={styles.emptyText}>
-                            Your venue result will appear here after you enter your index or
-                            reference number.
+                            Your venue result will appear here after you enter your index number.
                         </Text>
+                    </View>
+                )}
+
+                {error && (
+                    <View style={styles.emptyCard}>
+                        <Text style={styles.emptyTitle}>Search failed</Text>
+                        <Text style={styles.emptyText}>{error}</Text>
                     </View>
                 )}
 
@@ -203,7 +219,7 @@ export default function ExamVenueSearchScreen() {
                     </View>
                 )}
 
-                {hasSearched && matchedVenues.length === 0 && (
+                {hasSearched && !error && matchedVenues.length === 0 && (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>No venue found</Text>
                         <Text style={styles.emptyText}>
@@ -284,6 +300,9 @@ const styles = StyleSheet.create({
         color: AppColors.card,
         fontSize: 16,
         fontWeight: '800',
+    },
+    disabledButton: {
+        backgroundColor: AppColors.primaryDark,
     },
     clearButton: {
         height: 46,

@@ -1,7 +1,10 @@
 import { AppColors } from '@/constants/colors';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -30,19 +33,18 @@ const categories: AnnouncementCategory[] = [
 ];
 
 export default function PostAnnouncementScreen() {
+    const { token } = useAuth();
     const [title, setTitle] = useState('');
     const [category, setCategory] = useState<AnnouncementCategory>('General');
     const [message, setMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handlePostAnnouncement = () => {
+    const handlePostAnnouncement = async () => {
         const cleanedTitle = title.trim();
         const cleanedMessage = message.trim();
 
         if (!cleanedTitle || !cleanedMessage) {
-            Alert.alert(
-                'Missing details',
-                'Please enter the announcement title and message.'
-            );
+            Alert.alert('Missing details', 'Please enter the announcement title and message.');
             return;
         }
 
@@ -52,21 +54,30 @@ export default function PostAnnouncementScreen() {
         }
 
         if (cleanedMessage.length < 10) {
-            Alert.alert(
-                'Message too short',
-                'Please enter a more detailed announcement message.'
-            );
+            Alert.alert('Message too short', 'Please enter a more detailed announcement message.');
             return;
         }
 
-        Alert.alert(
-            'Announcement ready',
-            'This announcement form works. Backend posting will be connected later.'
-        );
+        try {
+            setIsSubmitting(true);
+            await apiRequest('/announcements', {
+                method: 'POST',
+                token,
+                body: { title: cleanedTitle, message: cleanedMessage, category },
+            });
 
-        setTitle('');
-        setCategory('General');
-        setMessage('');
+            Alert.alert('Announcement posted', 'Students can now see your announcement.', [
+                { text: 'OK', onPress: () => router.back() },
+            ]);
+
+            setTitle('');
+            setCategory('General');
+            setMessage('');
+        } catch (e) {
+            Alert.alert('Could not post', e instanceof Error ? e.message : 'Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -134,10 +145,15 @@ export default function PostAnnouncementScreen() {
                         />
 
                         <TouchableOpacity
-                            style={styles.postButton}
+                            style={[styles.postButton, isSubmitting && styles.disabledButton]}
                             onPress={handlePostAnnouncement}
+                            disabled={isSubmitting}
                         >
-                            <Text style={styles.postButtonText}>Post Announcement</Text>
+                            {isSubmitting ? (
+                                <ActivityIndicator color={AppColors.card} />
+                            ) : (
+                                <Text style={styles.postButtonText}>Post Announcement</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
 
@@ -262,6 +278,9 @@ const styles = StyleSheet.create({
         color: AppColors.card,
         fontSize: 16,
         fontWeight: '800',
+    },
+    disabledButton: {
+        backgroundColor: AppColors.primaryDark,
     },
     noteCard: {
         marginTop: 18,

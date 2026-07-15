@@ -1,8 +1,10 @@
 import { AppColors } from '@/constants/colors';
-import * as DocumentPicker from 'expo-document-picker';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -15,16 +17,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type SelectedFile = {
-    name: string;
-    uri: string;
-    mimeType?: string;
-    size?: number;
-};
-
 type ExamVenueStatus = 'pending' | 'confirmed';
 
 export default function ManageExamVenuesScreen() {
+    const { token } = useAuth();
     const [courseCode, setCourseCode] = useState('');
     const [courseTitle, setCourseTitle] = useState('');
     const [examDate, setExamDate] = useState('');
@@ -35,29 +31,9 @@ export default function ManageExamVenuesScreen() {
     const [startNumber, setStartNumber] = useState('');
     const [endNumber, setEndNumber] = useState('');
     const [status, setStatus] = useState<ExamVenueStatus>('confirmed');
-    const [proofFile, setProofFile] = useState<SelectedFile | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSelectProofFile = async () => {
-        const result = await DocumentPicker.getDocumentAsync({
-            type: ['image/*', 'application/pdf'],
-            copyToCacheDirectory: true,
-        });
-
-        if (result.canceled) {
-            return;
-        }
-
-        const file = result.assets[0];
-
-        setProofFile({
-            name: file.name,
-            uri: file.uri,
-            mimeType: file.mimeType,
-            size: file.size,
-        });
-    };
-
-    const handleSaveVenueRange = () => {
+    const handleSaveVenueRange = async () => {
         const cleanedCourseCode = courseCode.trim();
         const cleanedCourseTitle = courseTitle.trim();
         const cleanedExamDate = examDate.trim();
@@ -96,29 +72,48 @@ export default function ManageExamVenuesScreen() {
         }
 
         if (start > end) {
-            Alert.alert(
-                'Invalid range',
-                'The start number cannot be greater than the end number.'
-            );
+            Alert.alert('Invalid range', 'The start number cannot be greater than the end number.');
             return;
         }
 
-        Alert.alert(
-            'Venue range ready',
-            'The exam venue range form works. Backend saving will be connected later.'
-        );
+        try {
+            setIsSubmitting(true);
+            await apiRequest('/exam-venues', {
+                method: 'POST',
+                token,
+                body: {
+                    courseCode: cleanedCourseCode,
+                    courseTitle: cleanedCourseTitle,
+                    examDate: cleanedExamDate,
+                    examTime: cleanedExamTime,
+                    venue: cleanedVenue,
+                    buildingOrBlock: cleanedBuildingOrBlock,
+                    roomOrHall: roomOrHall.trim() || null,
+                    startIndex: start,
+                    endIndex: end,
+                    status,
+                },
+            });
 
-        setCourseCode('');
-        setCourseTitle('');
-        setExamDate('');
-        setExamTime('');
-        setVenue('');
-        setBuildingOrBlock('');
-        setRoomOrHall('');
-        setStartNumber('');
-        setEndNumber('');
-        setStatus('confirmed');
-        setProofFile(null);
+            Alert.alert('Venue range saved', 'Students in this range can now find their venue.', [
+                { text: 'OK', onPress: () => router.back() },
+            ]);
+
+            setCourseCode('');
+            setCourseTitle('');
+            setExamDate('');
+            setExamTime('');
+            setVenue('');
+            setBuildingOrBlock('');
+            setRoomOrHall('');
+            setStartNumber('');
+            setEndNumber('');
+            setStatus('confirmed');
+        } catch (e) {
+            Alert.alert('Could not save', e instanceof Error ? e.message : 'Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -281,29 +276,24 @@ export default function ManageExamVenuesScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.label}>Photo / PDF Proof</Text>
-                        <TouchableOpacity style={styles.fileButton} onPress={handleSelectProofFile}>
-                            <Text style={styles.fileButtonText}>Select Proof File</Text>
-                        </TouchableOpacity>
-
-                        <View style={styles.filePreview}>
-                            <Text style={styles.filePreviewLabel}>Selected file</Text>
-                            <Text style={styles.filePreviewText}>
-                                {proofFile ? proofFile.name : 'No file selected'}
-                            </Text>
-                        </View>
-
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSaveVenueRange}>
-                            <Text style={styles.saveButtonText}>Save Venue Range</Text>
+                        <TouchableOpacity
+                            style={[styles.saveButton, isSubmitting && styles.disabledButton]}
+                            onPress={handleSaveVenueRange}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color={AppColors.card} />
+                            ) : (
+                                <Text style={styles.saveButtonText}>Save Venue Range</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.noteCard}>
                         <Text style={styles.noteTitle}>Why range entry?</Text>
                         <Text style={styles.noteText}>
-                            One venue range can cover many students. This is faster than
-                            entering each student one by one and better than forcing students
-                            to search through WhatsApp images.
+                            One venue range covers many students at once, so you enter each exam
+                            hall only once instead of student by student.
                         </Text>
                     </View>
                 </ScrollView>
@@ -460,6 +450,9 @@ const styles = StyleSheet.create({
         color: AppColors.card,
         fontSize: 16,
         fontWeight: '800',
+    },
+    disabledButton: {
+        backgroundColor: AppColors.primaryDark,
     },
     noteCard: {
         marginTop: 18,

@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,8 +13,11 @@ import {
 } from 'react-native';
 
 import { AppColors } from '../constants/colors';
+import { useAuth } from '../context/auth-context';
+import { getItem } from '../services/storage';
 
 export default function ProfileSettingsScreen() {
+    const { signOut } = useAuth();
     const [fullName, setFullName] = useState('Student');
     const [email, setEmail] = useState('');
     const [programme, setProgramme] = useState('');
@@ -32,11 +34,11 @@ export default function ProfileSettingsScreen() {
     }, []);
 
     async function loadProfile() {
-        const storedName = await SecureStore.getItemAsync('userName');
-        const storedEmail = await SecureStore.getItemAsync('userEmail');
-        const storedProgramme = await SecureStore.getItemAsync('programme');
-        const storedLevel = await SecureStore.getItemAsync('level');
-        const storedRole = await SecureStore.getItemAsync('userRole');
+        const storedName = await getItem('userName');
+        const storedEmail = await getItem('userEmail');
+        const storedProgramme = await getItem('programme');
+        const storedLevel = await getItem('level');
+        const storedRole = await getItem('userRole');
 
         if (storedName) setFullName(storedName);
         if (storedEmail) setEmail(storedEmail);
@@ -46,16 +48,7 @@ export default function ProfileSettingsScreen() {
     }
 
     async function handleSignOut() {
-        await SecureStore.deleteItemAsync('authToken');
-        await SecureStore.deleteItemAsync('userId');
-        await SecureStore.deleteItemAsync('userName');
-        await SecureStore.deleteItemAsync('userEmail');
-        await SecureStore.deleteItemAsync('userRole');
-        await SecureStore.deleteItemAsync('indexNumber');
-        await SecureStore.deleteItemAsync('referenceNumber');
-        await SecureStore.deleteItemAsync('programme');
-        await SecureStore.deleteItemAsync('level');
-
+        await signOut();
         router.replace('/');
     }
 
