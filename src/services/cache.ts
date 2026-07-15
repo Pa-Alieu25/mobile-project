@@ -50,4 +50,5 @@ export const CacheKeys = {
     timetable: 'cache:timetable',
     announcements: 'cache:announcements',
     assignments: 'cache:assignments',
+    examVenues: 'cache:examVenues',
 } as const;

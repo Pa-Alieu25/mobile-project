@@ -1,9 +1,10 @@
 import { AppColors } from '@/constants/colors';
 import { NavigateButton } from '@/components/navigate-button';
+import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
-import { apiRequest } from '@/services/api';
+import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -37,48 +38,62 @@ function formatStatusLabel(status: string) {
 
 export default function ExamVenueSearchScreen() {
     const { token } = useAuth();
+    const [allVenues, setAllVenues] = useState<ExamVenueRecord[]>([]);
+    const [venuesReady, setVenuesReady] = useState(false);
+    const [isOffline, setIsOffline] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(false);
+
     const [searchNumber, setSearchNumber] = useState('');
     const [matchedVenues, setMatchedVenues] = useState<ExamVenueRecord[]>([]);
     const [hasSearched, setHasSearched] = useState(false);
-    const [isSearching, setIsSearching] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    async function handleSearchVenue() {
+    // Download all exam venues once (network-first, cache fallback). Search then
+    // runs locally against this list, so it works with no connection afterwards.
+    const loadVenues = useCallback(async () => {
+        try {
+            const { data, fromCache } = await fetchWithCache<ExamVenueRecord[]>(
+                CacheKeys.examVenues, '/exam-venues', token
+            );
+            setAllVenues(data);
+            setIsOffline(fromCache);
+            setLoadFailed(false);
+        } catch {
+            setLoadFailed(true);
+        } finally {
+            setVenuesReady(true);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        loadVenues();
+    }, [loadVenues]);
+
+    function handleSearchVenue() {
         const cleanedNumber = searchNumber.trim();
 
         if (!cleanedNumber) {
             Alert.alert('Missing number', 'Please enter your index number.');
             return;
         }
-
         if (Number.isNaN(Number(cleanedNumber))) {
             Alert.alert('Invalid number', 'Please enter numbers only. Example: 6170524');
             return;
         }
-
-        try {
-            setIsSearching(true);
-            setError(null);
-            const results = await apiRequest<ExamVenueRecord[]>(
-                `/exam-venues/search?number=${encodeURIComponent(cleanedNumber)}`,
-                { token }
-            );
-            setMatchedVenues(results);
-            setHasSearched(true);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Unable to search right now.');
-            setMatchedVenues([]);
-            setHasSearched(true);
-        } finally {
-            setIsSearching(false);
+        if (!venuesReady) {
+            Alert.alert('Please wait', 'Exam data is still loading.');
+            return;
         }
+
+        const num = Number(cleanedNumber);
+        const found = allVenues.filter((v) => num >= v.startIndex && num <= v.endIndex);
+        setMatchedVenues(found);
+        setHasSearched(true);
     }
 
     function handleClearSearch() {
         setSearchNumber('');
         setMatchedVenues([]);
         setHasSearched(false);
-        setError(null);
     }
 
     return (
@@ -94,9 +109,10 @@ export default function ExamVenueSearchScreen() {
 
                 <Text style={styles.title}>Exam Venue Search</Text>
                 <Text style={styles.subtitle}>
-                    Enter your index number or reference number to find the exam venue range
-                    that matches your number.
+                    Enter your index number to find your exam venue. Works offline once downloaded.
                 </Text>
+
+                {isOffline && <OfflineBanner />}
 
                 <View style={styles.searchCard}>
                     <Text style={styles.label}>Index / Reference Number</Text>
@@ -110,11 +126,11 @@ export default function ExamVenueSearchScreen() {
                     />
 
                     <TouchableOpacity
-                        style={[styles.searchButton, isSearching && styles.disabledButton]}
+                        style={[styles.searchButton, !venuesReady && styles.disabledButton]}
                         onPress={handleSearchVenue}
-                        disabled={isSearching}
+                        disabled={!venuesReady}
                     >
-                        {isSearching ? (
+                        {!venuesReady ? (
                             <ActivityIndicator color={AppColors.card} />
                         ) : (
                             <Text style={styles.searchButtonText}>Search Venue</Text>
@@ -128,21 +144,21 @@ export default function ExamVenueSearchScreen() {
                     )}
                 </View>
 
-                {!hasSearched && !error && (
+                {loadFailed && allVenues.length === 0 ? (
+                    <View style={styles.emptyCard}>
+                        <Text style={styles.emptyTitle}>Exam data not downloaded</Text>
+                        <Text style={styles.emptyText}>
+                            Connect to the internet once to download exam venues. After that you can search offline.
+                        </Text>
+                    </View>
+                ) : !hasSearched ? (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>Search for your exam venue</Text>
                         <Text style={styles.emptyText}>
-                            Your venue result will appear here after you enter your index number.
+                            Enter your index number to see your venue. Works offline once data is downloaded.
                         </Text>
                     </View>
-                )}
-
-                {error && (
-                    <View style={styles.emptyCard}>
-                        <Text style={styles.emptyTitle}>Search failed</Text>
-                        <Text style={styles.emptyText}>{error}</Text>
-                    </View>
-                )}
+                ) : null}
 
                 {hasSearched && matchedVenues.length > 0 && (
                     <View style={styles.resultsSection}>
@@ -224,7 +240,7 @@ export default function ExamVenueSearchScreen() {
                     </View>
                 )}
 
-                {hasSearched && !error && matchedVenues.length === 0 && (
+                {hasSearched && matchedVenues.length === 0 && allVenues.length > 0 && (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>No venue found</Text>
                         <Text style={styles.emptyText}>
