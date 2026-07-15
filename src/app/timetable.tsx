@@ -1,7 +1,8 @@
 import { AppColors } from '@/constants/colors';
 import { NavigateButton } from '@/components/navigate-button';
+import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
-import { apiRequest } from '@/services/api';
+import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -64,6 +65,7 @@ export default function TimetableScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isOffline, setIsOffline] = useState(false);
 
     const todayName = getTodayName();
     const tomorrowName = getTomorrowName();
@@ -71,8 +73,11 @@ export default function TimetableScreen() {
     const loadTimetable = useCallback(async () => {
         try {
             setError(null);
-            const data = await apiRequest<TimetableRecord[]>('/timetable', { token });
+            const { data, fromCache } = await fetchWithCache<TimetableRecord[]>(
+                CacheKeys.timetable, '/timetable', token
+            );
             setRecords(data);
+            setIsOffline(fromCache);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Unable to load the timetable.');
         } finally {
@@ -141,6 +146,8 @@ export default function TimetableScreen() {
                 <Text style={styles.subtitle}>
                     Today, tomorrow, and your full week at a glance.
                 </Text>
+
+                {isOffline && <OfflineBanner />}
 
                 <View style={styles.summaryCard}>
                     <View style={styles.summaryItem}>
