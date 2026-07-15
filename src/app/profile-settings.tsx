@@ -20,6 +20,7 @@ import {
     ensureNotificationPermissions,
 } from '../services/notifications';
 import { getItem, setItem } from '../services/storage';
+import { getSubscription, type SubscriptionStatus } from '../services/subscription';
 
 export default function ProfileSettingsScreen() {
     const { signOut } = useAuth();
@@ -33,6 +34,7 @@ export default function ProfileSettingsScreen() {
     const [assignmentReminders, setAssignmentReminders] = useState(true);
     const [examReminders, setExamReminders] = useState(true);
     const [nightSummary, setNightSummary] = useState(false);
+    const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
 
     useEffect(() => {
         loadProfile();
@@ -53,6 +55,8 @@ export default function ProfileSettingsScreen() {
 
         const remindersPref = await getItem(CLASS_REMINDERS_ENABLED_KEY);
         if (remindersPref !== null) setClassReminders(remindersPref === 'true');
+
+        setSubscription(await getSubscription());
     }
 
     async function handleToggleClassReminders(next: boolean) {
@@ -87,10 +91,16 @@ export default function ProfileSettingsScreen() {
     }
 
     function handleSubscription() {
-        Alert.alert(
-            'Pro features',
-            'Subscription and Paystack payment will be connected later. Core academic features will remain available.'
-        );
+        router.push('/paywall' as any);
+    }
+
+    function handleToggleNightSummary(next: boolean) {
+        // Night-before summary is a Pro feature — send non-Pro users to the paywall.
+        if (!subscription?.isProActive) {
+            router.push('/paywall' as any);
+            return;
+        }
+        setNightSummary(next);
     }
 
     return (
@@ -161,10 +171,10 @@ export default function ProfileSettingsScreen() {
                     />
 
                     <SettingSwitch
-                        title="Night-before summary"
+                        title="Night-before summary (Pro)"
                         description="Get a summary of tomorrow’s classes and pending work."
                         value={nightSummary}
-                        onValueChange={setNightSummary}
+                        onValueChange={handleToggleNightSummary}
                     />
                 </View>
 
@@ -183,14 +193,25 @@ export default function ProfileSettingsScreen() {
 
                 <View style={styles.card}>
                     <Text style={styles.sectionTitle}>Subscription Status</Text>
-                    <Text style={styles.proBadge}>Free Tier</Text>
+                    <Text style={styles.proBadge}>
+                        {subscription?.subscribed
+                            ? 'Pro'
+                            : subscription?.inFreePeriod
+                                ? 'Free semester'
+                                : 'Free tier'}
+                    </Text>
                     <Text style={styles.description}>
-                        Core academic features remain available. Pro features such as advanced reminders,
-                        priority alerts, and custom reminder intensity will be connected later.
+                        {subscription?.subscribed
+                            ? 'You have all Pro features, including advanced reminders and the night-before summary.'
+                            : subscription?.inFreePeriod
+                                ? `All Pro features are unlocked free for ${subscription.daysLeftInFree} more days.`
+                                : 'Core academic features remain free. Subscribe to unlock Pro reminder features.'}
                     </Text>
 
                     <TouchableOpacity style={styles.outlineButton} onPress={handleSubscription}>
-                        <Text style={styles.outlineButtonText}>View Pro Features</Text>
+                        <Text style={styles.outlineButtonText}>
+                            {subscription?.subscribed ? 'Manage subscription' : 'View Pro features'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
 

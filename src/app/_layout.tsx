@@ -30,6 +30,7 @@ function RootNavigator() {
         {/* Student screens */}
         <Stack.Screen name="student-dashboard" />
         <Stack.Screen name="profile-settings" />
+        <Stack.Screen name="paywall" />
         <Stack.Screen name="timetable" />
         <Stack.Screen name="announcements" />
         <Stack.Screen name="assignments" />
