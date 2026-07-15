@@ -1,6 +1,7 @@
 import { AppColors } from '@/constants/colors';
+import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
-import { apiRequest } from '@/services/api';
+import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { classRemindersActive, syncClassReminders } from '@/services/notifications';
 import { getItem } from '@/services/storage';
 import { router } from 'expo-router';
@@ -63,6 +64,7 @@ export default function StudentDashboard() {
     const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [isOffline, setIsOffline] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -88,13 +90,15 @@ export default function StudentDashboard() {
     const loadDashboard = useCallback(async () => {
         // One screen failing to load should not blank out the others.
         const [tt, asg, ann] = await Promise.allSettled([
-            apiRequest<TimetableRecord[]>('/timetable', { token }),
-            apiRequest<Assignment[]>('/assignments', { token }),
-            apiRequest<Announcement[]>('/announcements', { token }),
+            fetchWithCache<TimetableRecord[]>(CacheKeys.timetable, '/timetable', token),
+            fetchWithCache<Assignment[]>(CacheKeys.assignments, '/assignments', token),
+            fetchWithCache<Announcement[]>(CacheKeys.announcements, '/announcements', token),
         ]);
-        if (tt.status === 'fulfilled') setTimetable(tt.value);
-        if (asg.status === 'fulfilled') setAssignments(asg.value);
-        if (ann.status === 'fulfilled') setAnnouncements(ann.value);
+        let offline = false;
+        if (tt.status === 'fulfilled') { setTimetable(tt.value.data); offline = offline || tt.value.fromCache; }
+        if (asg.status === 'fulfilled') { setAssignments(asg.value.data); offline = offline || asg.value.fromCache; }
+        if (ann.status === 'fulfilled') { setAnnouncements(ann.value.data); offline = offline || ann.value.fromCache; }
+        setIsOffline(offline);
         setIsLoading(false);
         setRefreshing(false);
     }, [token]);
@@ -179,6 +183,8 @@ export default function StudentDashboard() {
                     <Text style={styles.profileText}>{programme}</Text>
                     <Text style={styles.profileSubText}>{level}</Text>
                 </View>
+
+                {isOffline && <OfflineBanner />}
 
                 {isLoading ? (
                     <View style={styles.loadingCard}>
