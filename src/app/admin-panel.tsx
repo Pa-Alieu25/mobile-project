@@ -140,18 +140,12 @@ export default function AdminPanel() {
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.sectionTitle}>Overview</Text>
-                {isLoading ? (
-                    <View style={styles.loadingCard}>
-                        <ActivityIndicator size="large" color={AppColors.primary} />
-                    </View>
-                ) : (
-                    <View style={styles.metricsGrid}>
+                {!isLoading && (
+                    <View style={styles.statStrip}>
                         {metrics.map((metric) => (
-                            <View key={metric.label} style={styles.metricCard}>
-                                <Text style={styles.metricLabel}>{metric.label}</Text>
-                                <Text style={styles.metricValue}>{metric.value}</Text>
-                                <Text style={styles.metricContext}>{metric.context}</Text>
+                            <View key={metric.label} style={styles.statItem}>
+                                <Text style={styles.statValue}>{metric.value}</Text>
+                                <Text style={styles.statLabel}>{metric.label}</Text>
                             </View>
                         ))}
                     </View>
@@ -233,11 +227,10 @@ const styles = StyleSheet.create({
     signOutButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: AppColors.card, borderWidth: 1, borderColor: AppColors.border },
     signOutText: { color: AppColors.primary, fontWeight: '700', fontSize: 13 },
     loadingCard: { paddingVertical: 40, alignItems: 'center' },
-    metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 22 },
-    metricCard: { flexBasis: '47%', flexGrow: 1, backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border },
-    metricLabel: { fontSize: 13, color: AppColors.mutedText, fontWeight: '700' },
-    metricValue: { fontSize: 28, color: AppColors.text, fontWeight: '900', marginTop: 6 },
-    metricContext: { fontSize: 12, color: AppColors.mutedText, marginTop: 4 },
+    statStrip: { flexDirection: 'row', backgroundColor: AppColors.card, borderRadius: 14, borderWidth: 1, borderColor: AppColors.border, paddingVertical: 14, marginBottom: 22 },
+    statItem: { flex: 1, alignItems: 'center' },
+    statValue: { fontSize: 18, fontWeight: '800', color: AppColors.text },
+    statLabel: { fontSize: 11, color: AppColors.mutedText, fontWeight: '600', marginTop: 3, textAlign: 'center' },
     section: { marginBottom: 22 },
     sectionTitle: { fontSize: 18, fontWeight: '800', color: AppColors.text, marginBottom: 10 },
     helperText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20, marginBottom: 12 },
