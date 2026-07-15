@@ -1,6 +1,7 @@
 import { AppColors } from '@/constants/colors';
+import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
-import { apiRequest } from '@/services/api';
+import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { getItem, setItem } from '@/services/storage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -37,12 +38,16 @@ export default function AssignmentsScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isOffline, setIsOffline] = useState(false);
 
     const loadAssignments = useCallback(async () => {
         try {
             setError(null);
-            const data = await apiRequest<Assignment[]>('/assignments', { token });
+            const { data, fromCache } = await fetchWithCache<Assignment[]>(
+                CacheKeys.assignments, '/assignments', token
+            );
             setAssignments(data);
+            setIsOffline(fromCache);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Unable to load assignments.');
         } finally {
@@ -121,6 +126,8 @@ export default function AssignmentsScreen() {
                 <Text style={styles.subtitle}>
                     Track due dates and mark work as done.
                 </Text>
+
+                {isOffline && <OfflineBanner />}
 
                 <View style={styles.summaryCard}>
                     <View style={styles.summaryItem}>
