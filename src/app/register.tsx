@@ -15,8 +15,6 @@ import {
     View,
 } from 'react-native';
 
-type Role = 'student' | 'course_rep';
-
 function getPasswordStrength(password: string): { label: string; color: string } {
     if (password.length === 0) return { label: '', color: 'transparent' };
     if (password.length < 6) return { label: 'Too short', color: '#e74c3c' };
@@ -34,7 +32,6 @@ export default function RegisterScreen() {
     const [level, setLevel] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [role, setRole] = useState<Role>('student');
     const [isLoading, setIsLoading] = useState(false);
 
     const passwordStrength = getPasswordStrength(password);
@@ -64,7 +61,6 @@ export default function RegisterScreen() {
                     programme: programme.trim(),
                     level: level.trim(),
                     password: password.trim(),
-                    role,
                 }),
             });
 
@@ -74,11 +70,7 @@ export default function RegisterScreen() {
                 return;
             }
 
-            if (role === 'course_rep') {
-                Alert.alert('Request submitted', 'Your course rep request has been submitted. Please wait for admin approval before signing in.', [{ text: 'OK', onPress: () => router.replace('/') }]);
-            } else {
-                Alert.alert('Account created', 'Your account has been created successfully. Please sign in.', [{ text: 'Sign in', onPress: () => router.replace('/') }]);
-            }
+            Alert.alert('Account created', 'Your account has been created successfully. Please sign in.', [{ text: 'Sign in', onPress: () => router.replace('/') }]);
         } catch (error) {
             Alert.alert('Connection error', 'Unable to connect to the server. Please check your connection and try again.');
         } finally {
@@ -91,22 +83,6 @@ export default function RegisterScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                 <Text style={styles.title}>Create Account</Text>
                 <Text style={styles.subtitle}>Register for KNUST ClassMate</Text>
-
-                <Text style={styles.sectionLabel}>I am registering as:</Text>
-                <View style={styles.roleRow}>
-                    <TouchableOpacity style={[styles.roleButton, role === 'student' && styles.roleButtonActive]} onPress={() => setRole('student')}>
-                        <Text style={[styles.roleButtonText, role === 'student' && styles.roleButtonTextActive]}>Student</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.roleButton, role === 'course_rep' && styles.roleButtonActive]} onPress={() => setRole('course_rep')}>
-                        <Text style={[styles.roleButtonText, role === 'course_rep' && styles.roleButtonTextActive]}>Course Rep</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {role === 'course_rep' && (
-                    <View style={styles.infoBox}>
-                        <Text style={styles.infoText}>Course rep accounts require admin approval before you can sign in.</Text>
-                    </View>
-                )}
 
                 <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor={AppColors.mutedText} value={fullName} onChangeText={setFullName} autoCapitalize="words" />
                 <TextInput style={styles.input} placeholder="Index Number" placeholderTextColor={AppColors.mutedText} value={indexNumber} onChangeText={setIndexNumber} autoCapitalize="characters" autoCorrect={false} />
@@ -128,7 +104,7 @@ export default function RegisterScreen() {
                 {passwordsMatch && <Text style={styles.successText}>Passwords match</Text>}
 
                 <TouchableOpacity style={[styles.button, isLoading && styles.disabledButton]} onPress={handleRegister} disabled={isLoading}>
-                    {isLoading ? <ActivityIndicator color={AppColors.card} /> : <Text style={styles.buttonText}>{role === 'course_rep' ? 'Submit Request' : 'Create Account'}</Text>}
+                    {isLoading ? <ActivityIndicator color={AppColors.card} /> : <Text style={styles.buttonText}>Create Account</Text>}
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => router.replace('/')}>

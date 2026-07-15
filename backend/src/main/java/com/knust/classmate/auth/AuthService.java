@@ -47,13 +47,8 @@ public class AuthService {
         if (userRepository.existsByReferenceNumber(request.referenceNumber().toUpperCase()))
             throw new ApiException(HttpStatus.CONFLICT, "An account with this reference number already exists.");
 
-        UserRole role = UserRole.STUDENT;
-        if ("course_rep".equalsIgnoreCase(request.role())) {
-            role = UserRole.COURSE_REP;
-        }
-
-        String status = role == UserRole.COURSE_REP ? "PENDING" : "ACTIVE";
-
+        // Everyone registers as a student. Only an admin can promote a student
+        // to course rep afterwards — self-selecting a role is not allowed.
         User user = User.builder()
             .fullName(request.fullName())
             .indexNumber(request.indexNumber().toUpperCase())
@@ -63,8 +58,8 @@ public class AuthService {
             .programme(request.programme())
             .level(request.level())
             .classGroup(request.classGroup())
-            .role(role)
-            .status(status)
+            .role(UserRole.STUDENT)
+            .status("ACTIVE")
             .build();
 
         return UserResponse.from(userRepository.save(user));
