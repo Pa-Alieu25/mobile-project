@@ -1,7 +1,11 @@
 import { AppColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -10,13 +14,61 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+type Announcement = { id: number; title: string; category: string; postedAt: string };
+
 export default function RepPanel() {
-    const { signOut } = useAuth();
+    const { signOut, token } = useAuth();
+    const [counts, setCounts] = useState({ announcements: 0, assignments: 0, classes: 0, examVenues: 0 });
+    const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const loadOverview = useCallback(async () => {
+        const [ann, asg, tt, ev] = await Promise.allSettled([
+            apiRequest<Announcement[]>('/announcements', { token }),
+            apiRequest<unknown[]>('/assignments', { token }),
+            apiRequest<unknown[]>('/timetable', { token }),
+            apiRequest<unknown[]>('/exam-venues', { token }),
+        ]);
+        setCounts({
+            announcements: ann.status === 'fulfilled' ? ann.value.length : 0,
+            assignments: asg.status === 'fulfilled' ? asg.value.length : 0,
+            classes: tt.status === 'fulfilled' ? tt.value.length : 0,
+            examVenues: ev.status === 'fulfilled' ? ev.value.length : 0,
+        });
+        if (ann.status === 'fulfilled') setLatestAnnouncement(ann.value[0] ?? null);
+        setIsLoading(false);
+        setRefreshing(false);
+    }, [token]);
+
+    useEffect(() => {
+        loadOverview();
+    }, [loadOverview]);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadOverview();
+    };
 
     const handleSignOut = async () => {
         await signOut();
         router.replace('/');
     };
+
+    const metrics = [
+        { label: 'Announcements', value: counts.announcements, context: 'posted to students' },
+        { label: 'Assignments', value: counts.assignments, context: 'currently listed' },
+        { label: 'Classes', value: counts.classes, context: 'in the timetable' },
+        { label: 'Exam venues', value: counts.examVenues, context: 'ranges added' },
+    ];
+
+    const actions = [
+        { title: 'Post Announcement', text: 'Share class updates, cancellations, and reminders.', route: '/post-announcement' },
+        { title: 'Manage Timetable', text: 'Add or update class times, lecturers, and venues.', route: '/manage-timetable' },
+        { title: 'Add Assignment', text: 'Record assignment details, due dates, and instructions.', route: '/add-assignment' },
+        { title: 'Upload Exam Venue Info', text: 'Add exam venue ranges so students can search them.', route: '/manage-exam-venues' },
+        { title: 'Profile & Settings', text: 'Manage reminders, sync, and account settings.', route: '/profile-settings' },
+    ];
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -24,9 +76,12 @@ export default function RepPanel() {
                 style={styles.container}
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
+                }
             >
                 <View style={styles.header}>
-                    <View>
+                    <View style={styles.headerText}>
                         <Text style={styles.title}>Course Rep Panel</Text>
                         <Text style={styles.subtitle}>Manage academic updates for your class</Text>
                     </View>
@@ -36,92 +91,54 @@ export default function RepPanel() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.noticeCard}>
-                    <Text style={styles.noticeLabel}>Rep Access</Text>
-                    <Text style={styles.noticeTitle}>Class coordination tools</Text>
-                    <Text style={styles.noticeText}>
-                        Use this panel to prepare announcements, timetable updates,
-                        assignments, and exam venue records.
-                    </Text>
+                <Text style={styles.sectionTitle}>Overview</Text>
+                {isLoading ? (
+                    <View style={styles.loadingCard}>
+                        <ActivityIndicator size="large" color={AppColors.primary} />
+                    </View>
+                ) : (
+                    <View style={styles.metricsGrid}>
+                        {metrics.map((metric) => (
+                            <View key={metric.label} style={styles.metricCard}>
+                                <Text style={styles.metricLabel}>{metric.label}</Text>
+                                <Text style={styles.metricValue}>{metric.value}</Text>
+                                <Text style={styles.metricContext}>{metric.context}</Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Latest announcement</Text>
+                    <TouchableOpacity style={styles.card} onPress={() => router.push('/announcements')}>
+                        {latestAnnouncement ? (
+                            <>
+                                <Text style={styles.announcementCategory}>{latestAnnouncement.category}</Text>
+                                <Text style={styles.announcementTitle}>{latestAnnouncement.title}</Text>
+                                <Text style={styles.announcementMeta}>{latestAnnouncement.postedAt}</Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.emptyTitle}>Nothing posted yet</Text>
+                                <Text style={styles.emptyText}>Your most recent announcement will show here.</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Quick Actions</Text>
-
+                    <Text style={styles.sectionTitle}>Quick actions</Text>
                     <View style={styles.actionList}>
-                        <TouchableOpacity
-                            style={styles.actionCard}
-                            onPress={() => router.push('/post-announcement')}
-                        >
-                            <Text style={styles.actionTitle}>Post Announcement</Text>
-                            <Text style={styles.actionText}>
-                                Share class updates, cancellations, venue changes, and reminders.
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionCard}
-                            onPress={() => router.push('/manage-timetable')}
-                        >
-                            <Text style={styles.actionTitle}>Manage Timetable</Text>
-                            <Text style={styles.actionText}>
-                                Add or update class times, course titles, lecturers, and venues.
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionCard}
-                            onPress={() => router.push('/add-assignment')}
-                        >
-                            <Text style={styles.actionTitle}>Add Assignment</Text>
-                            <Text style={styles.actionText}>
-                                Record assignment details, due dates, and submission instructions.
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionCard}
-                            onPress={() => router.push('/manage-exam-venues')}
-                        >
-                            <Text style={styles.actionTitle}>Upload Exam Venue Info</Text>
-                            <Text style={styles.actionText}>
-                                Add exam venues so students can search and prepare early.
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionCard}
-                            onPress={() => router.push('/profile-settings' as any)}
-                        >
-                            <Text style={styles.actionTitle}>Profile & Settings</Text>
-                            <Text style={styles.actionText}>
-                                Manage reminders, sync, subscription, and account settings.
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                <View style={styles.grid}>
-                    <View style={styles.smallCard}>
-                        <Text style={styles.cardValue}>0</Text>
-                        <Text style={styles.cardLabel}>announcements posted</Text>
-                    </View>
-
-                    <View style={styles.smallCard}>
-                        <Text style={styles.cardValue}>0</Text>
-                        <Text style={styles.cardLabel}>assignments added</Text>
-                    </View>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Recent Activity</Text>
-
-                    <View style={styles.emptyCard}>
-                        <Text style={styles.emptyTitle}>No activity yet</Text>
-                        <Text style={styles.emptyText}>
-                            Your recent timetable, announcement, assignment, and exam venue
-                            updates will appear here after backend sync is connected.
-                        </Text>
+                        {actions.map((action) => (
+                            <TouchableOpacity
+                                key={action.route}
+                                style={styles.actionCard}
+                                onPress={() => router.push(action.route as any)}
+                            >
+                                <Text style={styles.actionTitle}>{action.title}</Text>
+                                <Text style={styles.actionText}>{action.text}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
                 </View>
             </ScrollView>
@@ -148,6 +165,10 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: 20,
     },
+    headerText: {
+        flex: 1,
+        paddingRight: 12,
+    },
     title: {
         fontSize: 26,
         fontWeight: '800',
@@ -157,7 +178,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         marginTop: 4,
-        maxWidth: 220,
     },
     signOutButton: {
         paddingHorizontal: 12,
@@ -172,28 +192,40 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 13,
     },
-    noticeCard: {
-        backgroundColor: AppColors.primary,
-        borderRadius: 18,
-        padding: 18,
-        marginBottom: 24,
+    loadingCard: {
+        paddingVertical: 40,
+        alignItems: 'center',
     },
-    noticeLabel: {
-        color: AppColors.accent,
+    metricsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginBottom: 22,
+    },
+    metricCard: {
+        flexBasis: '47%',
+        flexGrow: 1,
+        backgroundColor: AppColors.card,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+    },
+    metricLabel: {
         fontSize: 13,
+        color: AppColors.mutedText,
         fontWeight: '700',
-        marginBottom: 8,
     },
-    noticeTitle: {
-        color: AppColors.card,
-        fontSize: 20,
-        fontWeight: '800',
-        marginBottom: 6,
+    metricValue: {
+        fontSize: 28,
+        color: AppColors.text,
+        fontWeight: '900',
+        marginTop: 6,
     },
-    noticeText: {
-        color: AppColors.card,
-        fontSize: 14,
-        lineHeight: 20,
+    metricContext: {
+        fontSize: 12,
+        color: AppColors.mutedText,
+        marginTop: 4,
     },
     section: {
         marginBottom: 22,
@@ -203,6 +235,46 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: AppColors.text,
         marginBottom: 10,
+    },
+    card: {
+        backgroundColor: AppColors.card,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+    },
+    announcementCategory: {
+        alignSelf: 'flex-start',
+        backgroundColor: AppColors.background,
+        color: AppColors.primary,
+        fontSize: 12,
+        fontWeight: '800',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 8,
+    },
+    announcementTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: AppColors.text,
+        marginBottom: 6,
+    },
+    announcementMeta: {
+        fontSize: 13,
+        color: AppColors.mutedText,
+    },
+    emptyTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: AppColors.text,
+        marginBottom: 6,
+    },
+    emptyText: {
+        fontSize: 14,
+        color: AppColors.mutedText,
+        lineHeight: 20,
     },
     actionList: {
         gap: 12,
@@ -221,48 +293,6 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     actionText: {
-        fontSize: 14,
-        color: AppColors.mutedText,
-        lineHeight: 20,
-    },
-    grid: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 22,
-    },
-    smallCard: {
-        flex: 1,
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    cardValue: {
-        fontSize: 30,
-        color: AppColors.primary,
-        fontWeight: '900',
-        marginBottom: 4,
-    },
-    cardLabel: {
-        fontSize: 13,
-        color: AppColors.mutedText,
-        lineHeight: 18,
-    },
-    emptyCard: {
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    emptyTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: AppColors.text,
-        marginBottom: 6,
-    },
-    emptyText: {
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 20,
