@@ -1,4 +1,6 @@
 import { AppColors } from '@/constants/colors';
+import { isPaystackConfigured, PAYSTACK_PUBLIC_KEY, PAYSTACK_TEST_MODE } from '@/config/paystack';
+import { getItem } from '@/services/storage';
 import {
     activatePro,
     cancelPro,
@@ -17,6 +19,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const freeFeatures = [
@@ -35,6 +38,15 @@ const proFeatures = [
 ];
 
 export default function PaywallScreen() {
+    return (
+        <PaystackProvider publicKey={PAYSTACK_PUBLIC_KEY} currency="GHS" debug={PAYSTACK_TEST_MODE}>
+            <PaywallContent />
+        </PaystackProvider>
+    );
+}
+
+function PaywallContent() {
+    const { popup } = usePaystack();
     const [status, setStatus] = useState<SubscriptionStatus | null>(null);
     const [isWorking, setIsWorking] = useState(false);
 
@@ -44,23 +56,36 @@ export default function PaywallScreen() {
         load();
     }, []);
 
-    const handleSubscribe = () => {
-        Alert.alert(
-            'Subscribe to Pro',
-            `Live Paystack payment (Mobile Money or card) will be added for production. Activate Pro now for GHS ${PRO_PRICE_GHS}/semester?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Activate',
-                    onPress: async () => {
-                        setIsWorking(true);
-                        await activatePro();
-                        await load();
-                        setIsWorking(false);
-                    },
-                },
-            ]
-        );
+    const handleSubscribe = async () => {
+        if (!isPaystackConfigured) {
+            Alert.alert(
+                'Paystack not set up',
+                'Add your Paystack test public key (EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY) to enable checkout.'
+            );
+            return;
+        }
+
+        const email = (await getItem('userEmail')) || 'student@knust.edu.gh';
+
+        popup.checkout({
+            email,
+            amount: PRO_PRICE_GHS * 100, // Paystack expects the amount in the currency's subunit (pesewas)
+            reference: `classmate_${Date.now()}`,
+            metadata: { purpose: 'ClassMate Pro subscription' },
+            onSuccess: async () => {
+                setIsWorking(true);
+                await activatePro();
+                await load();
+                setIsWorking(false);
+                Alert.alert('Payment successful', 'You now have ClassMate Pro.');
+            },
+            onCancel: () => {
+                Alert.alert('Payment cancelled', 'You have not been charged.');
+            },
+            onError: (err) => {
+                Alert.alert('Payment failed', err?.message || 'Something went wrong. Please try again.');
+            },
+        });
     };
 
     const handleCancel = () => {
@@ -166,7 +191,8 @@ export default function PaywallScreen() {
                         )}
 
                         <Text style={styles.footnote}>
-                            Payment via Paystack (Mobile Money and card) is added in the production build. No
+                            Secure payment by Paystack (Mobile Money and card).
+                            {PAYSTACK_TEST_MODE ? ' Test mode — use a Paystack test card, no real charge.' : ''} No
                             automatic renewal — you re-subscribe each semester.
                         </Text>
                     </>
