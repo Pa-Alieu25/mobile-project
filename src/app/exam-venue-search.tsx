@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { NavigateButton } from '@/components/navigate-button';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
@@ -214,6 +215,10 @@ export default function ExamVenueSearchScreen() {
                                         {venueRecord.startIndex} - {venueRecord.endIndex}
                                     </Text>
                                 </View>
+
+                                <NavigateButton
+                                    query={`${venueRecord.venue} ${venueRecord.buildingOrBlock}`}
+                                />
                             </View>
                         ))}
                     </View>
