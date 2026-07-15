@@ -14,7 +14,12 @@ import {
 
 import { AppColors } from '../constants/colors';
 import { useAuth } from '../context/auth-context';
-import { getItem } from '../services/storage';
+import {
+    cancelAllReminders,
+    CLASS_REMINDERS_ENABLED_KEY,
+    ensureNotificationPermissions,
+} from '../services/notifications';
+import { getItem, setItem } from '../services/storage';
 
 export default function ProfileSettingsScreen() {
     const { signOut } = useAuth();
@@ -45,6 +50,28 @@ export default function ProfileSettingsScreen() {
         if (storedProgramme) setProgramme(storedProgramme);
         if (storedLevel) setLevel(storedLevel);
         if (storedRole) setRole(storedRole);
+
+        const remindersPref = await getItem(CLASS_REMINDERS_ENABLED_KEY);
+        if (remindersPref !== null) setClassReminders(remindersPref === 'true');
+    }
+
+    async function handleToggleClassReminders(next: boolean) {
+        if (next) {
+            const granted = await ensureNotificationPermissions();
+            if (!granted) {
+                Alert.alert(
+                    'Notifications are off',
+                    'Allow notifications for ClassMate in your device settings to receive class reminders.'
+                );
+                return;
+            }
+            setClassReminders(true);
+            await setItem(CLASS_REMINDERS_ENABLED_KEY, 'true');
+        } else {
+            setClassReminders(false);
+            await setItem(CLASS_REMINDERS_ENABLED_KEY, 'false');
+            await cancelAllReminders();
+        }
     }
 
     async function handleSignOut() {
@@ -114,9 +141,9 @@ export default function ProfileSettingsScreen() {
 
                     <SettingSwitch
                         title="Class reminders"
-                        description="Receive reminders before upcoming classes."
+                        description="Get a reminder 30 minutes before each class today."
                         value={classReminders}
-                        onValueChange={setClassReminders}
+                        onValueChange={handleToggleClassReminders}
                     />
 
                     <SettingSwitch

@@ -1,6 +1,7 @@
 import { AppColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
+import { classRemindersActive, syncClassReminders } from '@/services/notifications';
 import { getItem } from '@/services/storage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -132,6 +133,17 @@ export default function StudentDashboard() {
         () => assignments.filter((a) => !completedIds.has(a.id)).length,
         [assignments, completedIds]
     );
+
+    // Once today's classes are known, (re)schedule local reminders — but only if
+    // the student already enabled them, so we never prompt from the dashboard.
+    useEffect(() => {
+        if (isLoading) return;
+        (async () => {
+            if (await classRemindersActive()) {
+                await syncClassReminders(todaysClasses);
+            }
+        })();
+    }, [isLoading, todaysClasses]);
 
     const latestAnnouncement = announcements[0] ?? null;
 
