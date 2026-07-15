@@ -126,20 +126,6 @@ export default function AnnouncementsScreen() {
 
                 {isOffline && <OfflineBanner />}
 
-                <View style={styles.summaryCard}>
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryNumber}>{announcements.length}</Text>
-                        <Text style={styles.summaryLabel}>Total</Text>
-                    </View>
-
-                    <View style={styles.summaryDivider} />
-
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryNumber}>{unreadCount}</Text>
-                        <Text style={styles.summaryLabel}>Unread</Text>
-                    </View>
-                </View>
-
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}

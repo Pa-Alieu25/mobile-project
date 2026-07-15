@@ -92,18 +92,12 @@ export default function RepPanel() {
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.sectionTitle}>Overview</Text>
-                {isLoading ? (
-                    <View style={styles.loadingCard}>
-                        <ActivityIndicator size="large" color={AppColors.primary} />
-                    </View>
-                ) : (
-                    <View style={styles.metricsGrid}>
+                {!isLoading && (
+                    <View style={styles.statStrip}>
                         {metrics.map((metric) => (
-                            <View key={metric.label} style={styles.metricCard}>
-                                <Text style={styles.metricLabel}>{metric.label}</Text>
-                                <Text style={styles.metricValue}>{metric.value}</Text>
-                                <Text style={styles.metricContext}>{metric.context}</Text>
+                            <View key={metric.label} style={styles.statItem}>
+                                <Text style={styles.statValue}>{metric.value}</Text>
+                                <Text style={styles.statLabel}>{metric.label}</Text>
                             </View>
                         ))}
                     </View>
@@ -197,36 +191,30 @@ const styles = StyleSheet.create({
         paddingVertical: 40,
         alignItems: 'center',
     },
-    metricsGrid: {
+    statStrip: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-        marginBottom: 22,
-    },
-    metricCard: {
-        flexBasis: '47%',
-        flexGrow: 1,
         backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: AppColors.border,
+        paddingVertical: 14,
+        marginBottom: 22,
     },
-    metricLabel: {
-        fontSize: 13,
-        color: AppColors.mutedText,
-        fontWeight: '700',
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
     },
-    metricValue: {
-        fontSize: 28,
+    statValue: {
+        fontSize: 18,
+        fontWeight: '800',
         color: AppColors.text,
-        fontWeight: '900',
-        marginTop: 6,
     },
-    metricContext: {
-        fontSize: 12,
+    statLabel: {
+        fontSize: 11,
         color: AppColors.mutedText,
-        marginTop: 4,
+        fontWeight: '600',
+        marginTop: 3,
+        textAlign: 'center',
     },
     section: {
         marginBottom: 22,

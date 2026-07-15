@@ -156,20 +156,6 @@ export default function TimetableScreen() {
 
                 {isOffline && <OfflineBanner />}
 
-                <View style={styles.summaryCard}>
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryNumber}>{activeClassesCount}</Text>
-                        <Text style={styles.summaryLabel}>Active Classes</Text>
-                    </View>
-
-                    <View style={styles.summaryDivider} />
-
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryNumber}>{changedClassesCount}</Text>
-                        <Text style={styles.summaryLabel}>Updates</Text>
-                    </View>
-                </View>
-
                 <View style={styles.tabContainer}>
                     <TouchableOpacity
                         style={[styles.tabButton, activeTab === 'today' && styles.activeTabButton]}

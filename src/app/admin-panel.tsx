@@ -4,10 +4,19 @@ import { apiRequest } from '@/services/api';
 import { getItem } from '@/services/storage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type PendingUser = {
+type Rep = {
     id: number;
     fullName: string;
     email: string;
@@ -19,16 +28,18 @@ type PendingUser = {
 export default function AdminPanel() {
     const { signOut, token } = useAuth();
     const [adminName, setAdminName] = useState('Admin');
-    const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+    const [reps, setReps] = useState<Rep[]>([]);
     const [counts, setCounts] = useState({ announcements: 0, assignments: 0, classes: 0 });
     const [isLoading, setIsLoading] = useState(true);
+    const [repIdentifier, setRepIdentifier] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const fetchPendingUsers = useCallback(async () => {
+    const fetchReps = useCallback(async () => {
         try {
-            const data = await apiRequest<PendingUser[]>('/admin/pending-reps', { token });
-            setPendingUsers(data);
+            const data = await apiRequest<Rep[]>('/admin/reps', { token });
+            setReps(data);
         } catch (error) {
-            console.error('Failed to fetch pending users', error);
+            console.error('Failed to fetch reps', error);
         }
     }, [token]);
 
@@ -43,9 +54,9 @@ export default function AdminPanel() {
             assignments: asg.status === 'fulfilled' ? asg.value.length : 0,
             classes: tt.status === 'fulfilled' ? tt.value.length : 0,
         });
-        await fetchPendingUsers();
+        await fetchReps();
         setIsLoading(false);
-    }, [token, fetchPendingUsers]);
+    }, [token, fetchReps]);
 
     useEffect(() => {
         (async () => {
@@ -55,24 +66,45 @@ export default function AdminPanel() {
         })();
     }, [loadOverview]);
 
-    const handleApprove = async (userId: number) => {
+    const handleMakeRep = async () => {
+        const identifier = repIdentifier.trim();
+        if (!identifier) {
+            Alert.alert('Enter an index number', "Type the student's index number or email to make them a course rep.");
+            return;
+        }
         try {
-            await apiRequest(`/admin/approve-rep/${userId}`, { method: 'POST', token });
-            Alert.alert('Approved', 'Course rep account has been approved.');
-            fetchPendingUsers();
-        } catch {
-            Alert.alert('Error', 'Failed to approve this account.');
+            setIsSubmitting(true);
+            const rep = await apiRequest<Rep>('/admin/make-rep', {
+                method: 'POST',
+                token,
+                body: { identifier },
+            });
+            Alert.alert('Course rep added', `${rep.fullName} is now a course rep.`);
+            setRepIdentifier('');
+            fetchReps();
+        } catch (e) {
+            Alert.alert('Could not add rep', e instanceof Error ? e.message : 'Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const handleReject = async (userId: number) => {
-        try {
-            await apiRequest(`/admin/reject-rep/${userId}`, { method: 'POST', token });
-            Alert.alert('Rejected', 'Course rep request has been rejected.');
-            fetchPendingUsers();
-        } catch {
-            Alert.alert('Error', 'Failed to reject this request.');
-        }
+    const handleRemoveRep = (rep: Rep) => {
+        Alert.alert('Remove course rep?', `${rep.fullName} will go back to a normal student account.`, [
+            { text: 'Keep', style: 'cancel' },
+            {
+                text: 'Remove',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await apiRequest(`/admin/remove-rep/${rep.id}`, { method: 'POST', token });
+                        fetchReps();
+                    } catch (e) {
+                        Alert.alert('Could not remove', e instanceof Error ? e.message : 'Please try again.');
+                    }
+                },
+            },
+        ]);
     };
 
     const handleSignOut = async () => {
@@ -81,21 +113,18 @@ export default function AdminPanel() {
     };
 
     const metrics = [
-        { label: 'Pending reps', value: pendingUsers.length, context: pendingUsers.length === 0 ? 'none waiting' : 'awaiting review' },
+        { label: 'Course reps', value: reps.length, context: reps.length === 1 ? 'active' : 'active' },
         { label: 'Announcements', value: counts.announcements, context: 'posted' },
         { label: 'Assignments', value: counts.assignments, context: 'listed' },
         { label: 'Classes', value: counts.classes, context: 'in timetable' },
     ];
 
     const tools = [
-        { title: 'Post Announcement', text: 'Share class updates, cancellations, and reminders.', route: '/post-announcement' },
-        { title: 'Manage Timetable', text: 'Add or update class times, lecturers, and venues.', route: '/manage-timetable' },
-        { title: 'Add Assignment', text: 'Record assignment details, due dates, and instructions.', route: '/add-assignment' },
-        { title: 'Upload Exam Venue Info', text: 'Add exam venue ranges for students to search.', route: '/manage-exam-venues' },
-        { title: 'View Announcements', text: 'See all announcements posted to students.', route: '/announcements' },
-        { title: 'View Timetable', text: 'Check today, tomorrow, and weekly classes.', route: '/timetable' },
-        { title: 'View Assignments', text: 'Track all posted assignments and deadlines.', route: '/assignments' },
-        { title: 'Exam Venue Search', text: 'Find exam venues using an index number.', route: '/exam-venue-search' },
+        { title: 'Post Announcement', text: 'Share class updates and cancellations.', route: '/post-announcement' },
+        { title: 'Manage Timetable', text: 'Add, cancel, or remove classes.', route: '/manage-timetable' },
+        { title: 'Add Assignment', text: 'Record assignment details and due dates.', route: '/add-assignment' },
+        { title: 'Upload Exam Venue Info', text: 'Add exam venue ranges for students.', route: '/manage-exam-venues' },
+        { title: 'Upload Midsem Score', text: 'Post a student’s midsem score by index number.', route: '/upload-score' },
     ];
 
     return (
@@ -111,51 +140,64 @@ export default function AdminPanel() {
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.sectionTitle}>Overview</Text>
-                {isLoading ? (
-                    <View style={styles.loadingCard}>
-                        <ActivityIndicator size="large" color={AppColors.primary} />
-                    </View>
-                ) : (
-                    <View style={styles.metricsGrid}>
+                {!isLoading && (
+                    <View style={styles.statStrip}>
                         {metrics.map((metric) => (
-                            <View key={metric.label} style={styles.metricCard}>
-                                <Text style={styles.metricLabel}>{metric.label}</Text>
-                                <Text style={styles.metricValue}>{metric.value}</Text>
-                                <Text style={styles.metricContext}>{metric.context}</Text>
+                            <View key={metric.label} style={styles.statItem}>
+                                <Text style={styles.statValue}>{metric.value}</Text>
+                                <Text style={styles.statLabel}>{metric.label}</Text>
                             </View>
                         ))}
                     </View>
                 )}
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Pending course rep requests ({pendingUsers.length})</Text>
-                    {pendingUsers.length === 0 ? (
-                        <View style={styles.emptyCard}>
-                            <Text style={styles.emptyTitle}>No pending requests</Text>
-                            <Text style={styles.emptyText}>When students register as course reps, their requests appear here.</Text>
-                        </View>
+                    <Text style={styles.sectionTitle}>Make a course rep</Text>
+                    <Text style={styles.helperText}>
+                        The person registers as a student first, then you enter their index number or email here to
+                        make them a course rep.
+                    </Text>
+                    <View style={styles.formCard}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Student index number or email"
+                            placeholderTextColor={AppColors.mutedText}
+                            value={repIdentifier}
+                            onChangeText={setRepIdentifier}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                        />
+                        <TouchableOpacity
+                            style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
+                            onPress={handleMakeRep}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color={AppColors.card} />
+                            ) : (
+                                <Text style={styles.primaryButtonText}>Make course rep</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Current course reps ({reps.length})</Text>
+                    {reps.length === 0 ? (
+                        <Text style={styles.helperText}>No course reps yet.</Text>
                     ) : (
-                        pendingUsers.map((user) => (
-                            <View key={user.id} style={styles.userCard}>
-                                <Text style={styles.userName}>{user.fullName}</Text>
-                                <Text style={styles.userDetail}>{user.email}</Text>
-                                <Text style={styles.userDetail}>Index: {user.indexNumber}</Text>
-                                <Text style={styles.userDetail}>{user.programme} — Level {user.level}</Text>
-                                <View style={styles.actionRow}>
-                                    <TouchableOpacity style={styles.approveButton} onPress={() => handleApprove(user.id)}>
-                                        <Text style={styles.approveText}>Approve</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.rejectButton} onPress={() => handleReject(user.id)}>
-                                        <Text style={styles.rejectText}>Reject</Text>
-                                    </TouchableOpacity>
-                                </View>
+                        reps.map((rep) => (
+                            <View key={rep.id} style={styles.repCard}>
+                                <Text style={styles.repName}>{rep.fullName}</Text>
+                                <Text style={styles.repDetail}>{rep.email}</Text>
+                                <Text style={styles.repDetail}>Index: {rep.indexNumber}</Text>
+                                <Text style={styles.repDetail}>{rep.programme} — Level {rep.level}</Text>
+                                <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveRep(rep)}>
+                                    <Text style={styles.removeButtonText}>Remove rep</Text>
+                                </TouchableOpacity>
                             </View>
                         ))
                     )}
-                    <TouchableOpacity style={styles.refreshButton} onPress={fetchPendingUsers}>
-                        <Text style={styles.refreshText}>Refresh list</Text>
-                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.section}>
@@ -185,26 +227,23 @@ const styles = StyleSheet.create({
     signOutButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: AppColors.card, borderWidth: 1, borderColor: AppColors.border },
     signOutText: { color: AppColors.primary, fontWeight: '700', fontSize: 13 },
     loadingCard: { paddingVertical: 40, alignItems: 'center' },
-    metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 22 },
-    metricCard: { flexBasis: '47%', flexGrow: 1, backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border },
-    metricLabel: { fontSize: 13, color: AppColors.mutedText, fontWeight: '700' },
-    metricValue: { fontSize: 28, color: AppColors.text, fontWeight: '900', marginTop: 6 },
-    metricContext: { fontSize: 12, color: AppColors.mutedText, marginTop: 4 },
+    statStrip: { flexDirection: 'row', backgroundColor: AppColors.card, borderRadius: 14, borderWidth: 1, borderColor: AppColors.border, paddingVertical: 14, marginBottom: 22 },
+    statItem: { flex: 1, alignItems: 'center' },
+    statValue: { fontSize: 18, fontWeight: '800', color: AppColors.text },
+    statLabel: { fontSize: 11, color: AppColors.mutedText, fontWeight: '600', marginTop: 3, textAlign: 'center' },
     section: { marginBottom: 22 },
     sectionTitle: { fontSize: 18, fontWeight: '800', color: AppColors.text, marginBottom: 10 },
-    emptyCard: { backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border, marginBottom: 12 },
-    emptyTitle: { fontSize: 16, fontWeight: '700', color: AppColors.text, marginBottom: 6 },
-    emptyText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20 },
-    userCard: { backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border, marginBottom: 12 },
-    userName: { fontSize: 17, fontWeight: '800', color: AppColors.text, marginBottom: 4 },
-    userDetail: { fontSize: 14, color: AppColors.mutedText, marginBottom: 2 },
-    actionRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
-    approveButton: { flex: 1, height: 44, backgroundColor: AppColors.primary, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    approveText: { color: AppColors.card, fontWeight: '800', fontSize: 14 },
-    rejectButton: { flex: 1, height: 44, borderWidth: 1, borderColor: AppColors.danger, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    rejectText: { color: AppColors.danger, fontWeight: '800', fontSize: 14 },
-    refreshButton: { height: 44, borderRadius: 10, borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
-    refreshText: { color: AppColors.mutedText, fontWeight: '700' },
+    helperText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20, marginBottom: 12 },
+    formCard: { backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border },
+    input: { height: 52, borderWidth: 1, borderColor: AppColors.border, borderRadius: 12, paddingHorizontal: 14, marginBottom: 14, fontSize: 15, color: AppColors.text, backgroundColor: AppColors.background },
+    primaryButton: { height: 50, borderRadius: 12, backgroundColor: AppColors.primary, justifyContent: 'center', alignItems: 'center' },
+    disabledButton: { backgroundColor: AppColors.primaryDark },
+    primaryButtonText: { color: AppColors.card, fontWeight: '800', fontSize: 15 },
+    repCard: { backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border, marginBottom: 12 },
+    repName: { fontSize: 17, fontWeight: '800', color: AppColors.text, marginBottom: 4 },
+    repDetail: { fontSize: 14, color: AppColors.mutedText, marginBottom: 2 },
+    removeButton: { marginTop: 12, height: 42, borderRadius: 10, borderWidth: 1, borderColor: AppColors.danger, justifyContent: 'center', alignItems: 'center' },
+    removeButtonText: { color: AppColors.danger, fontWeight: '800', fontSize: 14 },
     actionList: { gap: 12 },
     actionCard: { backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border },
     actionTitle: { fontSize: 16, fontWeight: '800', color: AppColors.primary, marginBottom: 4 },

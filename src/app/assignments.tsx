@@ -129,20 +129,6 @@ export default function AssignmentsScreen() {
 
                 {isOffline && <OfflineBanner />}
 
-                <View style={styles.summaryCard}>
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryNumber}>{pendingAssignments.length}</Text>
-                        <Text style={styles.summaryLabel}>Pending</Text>
-                    </View>
-
-                    <View style={styles.summaryDivider} />
-
-                    <View style={styles.summaryItem}>
-                        <Text style={styles.summaryNumber}>{completedAssignments.length}</Text>
-                        <Text style={styles.summaryLabel}>Completed</Text>
-                    </View>
-                </View>
-
                 <View style={styles.tabContainer}>
                     <TouchableOpacity
                         style={[styles.tabButton, activeTab === 'pending' && styles.activeTabButton]}
