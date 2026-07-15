@@ -270,6 +270,11 @@ export default function StudentDashboard() {
                             <Text style={styles.actionText}>Track deadlines and completed work.</Text>
                         </TouchableOpacity>
 
+                        <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/my-scores' as any)}>
+                            <Text style={styles.actionTitle}>Midsem Scores</Text>
+                            <Text style={styles.actionText}>View your released midsem scores.</Text>
+                        </TouchableOpacity>
+
                         <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/profile-settings' as any)}>
                             <Text style={styles.actionTitle}>Profile & Settings</Text>
                             <Text style={styles.actionText}>Manage reminders, sync, and account settings.</Text>

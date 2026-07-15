@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { getItem } from './storage';
+import { getItem, setItem } from './storage';
 
 // Local (on-device) reminders. This works in Expo Go — remote push would need
 // an EAS development build, which is a separate step.
@@ -106,4 +106,49 @@ export async function classRemindersActive(): Promise<boolean> {
     if ((await getItem(CLASS_REMINDERS_ENABLED_KEY)) === 'false') return false;
     const perms = await Notifications.getPermissionsAsync();
     return perms.granted;
+}
+
+const SEEN_SCORE_IDS_KEY = 'seenScoreIds';
+
+export type ScoreNotice = { id: number; courseCode: string };
+
+// Fires a personal local notification for any midsem score the student hasn't
+// seen yet, then records them as seen so they are not alerted twice. Only
+// notifies when permission is already granted (never prompts here). This is the
+// on-device stand-in for the personalized push alert until remote push is set up.
+export async function notifyNewScores(scores: ScoreNotice[]): Promise<void> {
+    const raw = await getItem(SEEN_SCORE_IDS_KEY);
+    let seen: number[] = [];
+    if (raw) {
+        try {
+            seen = JSON.parse(raw);
+        } catch {
+            // ignore malformed cache
+        }
+    }
+    const seenSet = new Set(seen);
+    const fresh = scores.filter((s) => !seenSet.has(s.id));
+    if (fresh.length === 0) return;
+
+    const perms = await Notifications.getPermissionsAsync();
+    if (perms.granted) {
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+                name: 'Class reminders',
+                importance: Notifications.AndroidImportance.HIGH,
+            });
+        }
+        for (const s of fresh) {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: 'Midsem score available',
+                    body: `Your ${s.courseCode} midsem score has been posted.`,
+                },
+                trigger: null, // present immediately
+            });
+        }
+    }
+
+    const allIds = scores.map((s) => s.id);
+    await setItem(SEEN_SCORE_IDS_KEY, JSON.stringify([...new Set([...seen, ...allIds])]));
 }

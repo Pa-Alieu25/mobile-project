@@ -35,6 +35,7 @@ function RootNavigator() {
         <Stack.Screen name="announcements" />
         <Stack.Screen name="assignments" />
         <Stack.Screen name="exam-venue-search" />
+        <Stack.Screen name="my-scores" />
 
         {/* Course rep screens */}
         <Stack.Screen name="rep-panel" />
@@ -42,6 +43,7 @@ function RootNavigator() {
         <Stack.Screen name="add-assignment" />
         <Stack.Screen name="manage-timetable" />
         <Stack.Screen name="manage-exam-venues" />
+        <Stack.Screen name="upload-score" />
       </Stack.Protected>
 
       {/* Admin only */}
