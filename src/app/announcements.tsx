@@ -1,7 +1,12 @@
 import { AppColors } from '@/constants/colors';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
+import { getItem, setItem } from '@/services/storage';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -10,31 +15,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type AnnouncementCategory =
-    | 'General'
-    | 'Class Update'
-    | 'Venue Change'
-    | 'Assignment'
-    | 'Exam';
-
 type Announcement = {
     id: number;
     title: string;
     message: string;
-    category: AnnouncementCategory;
+    category: string;
     targetClassGroup: string;
     postedBy: string;
     postedAt: string;
-    isRead: boolean;
 };
 
-type FilterCategory = 'All' | AnnouncementCategory;
-
-// Backend data will be loaded into this list later.
-// Keep this empty for now so the app does not show fake announcement records.
-const initialAnnouncements: Announcement[] = [];
-
-const filterCategories: FilterCategory[] = [
+const filterCategories = [
     'All',
     'General',
     'Class Update',
@@ -43,34 +34,68 @@ const filterCategories: FilterCategory[] = [
     'Exam',
 ];
 
+const READ_IDS_KEY = 'readAnnouncementIds';
+
 export default function AnnouncementsScreen() {
-    const [activeFilter, setActiveFilter] = useState<FilterCategory>('All');
-    const [announcements, setAnnouncements] =
-        useState<Announcement[]>(initialAnnouncements);
+    const { token } = useAuth();
+    const [activeFilter, setActiveFilter] = useState<string>('All');
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [readIds, setReadIds] = useState<Set<number>>(new Set());
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadAnnouncements = useCallback(async () => {
+        try {
+            setError(null);
+            const data = await apiRequest<Announcement[]>('/announcements', { token });
+            setAnnouncements(data);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to load announcements.');
+        } finally {
+            setIsLoading(false);
+            setRefreshing(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        loadAnnouncements();
+    }, [loadAnnouncements]);
+
+    // Read status is tracked on the device, since the backend does not store it.
+    useEffect(() => {
+        (async () => {
+            const raw = await getItem(READ_IDS_KEY);
+            if (raw) {
+                try {
+                    setReadIds(new Set<number>(JSON.parse(raw)));
+                } catch {
+                    // ignore malformed cache
+                }
+            }
+        })();
+    }, []);
 
     const unreadCount = useMemo(
-        () => announcements.filter((announcement) => !announcement.isRead).length,
-        [announcements]
+        () => announcements.filter((a) => !readIds.has(a.id)).length,
+        [announcements, readIds]
     );
 
     const filteredAnnouncements = useMemo(() => {
-        if (activeFilter === 'All') {
-            return announcements;
-        }
-
-        return announcements.filter(
-            (announcement) => announcement.category === activeFilter
-        );
+        if (activeFilter === 'All') return announcements;
+        return announcements.filter((a) => a.category === activeFilter);
     }, [activeFilter, announcements]);
 
-    function handleMarkAsRead(announcementId: number) {
-        setAnnouncements((currentAnnouncements) =>
-            currentAnnouncements.map((announcement) =>
-                announcement.id === announcementId
-                    ? { ...announcement, isRead: true }
-                    : announcement
-            )
-        );
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadAnnouncements();
+    };
+
+    async function handleMarkAsRead(announcementId: number) {
+        const next = new Set(readIds);
+        next.add(announcementId);
+        setReadIds(next);
+        await setItem(READ_IDS_KEY, JSON.stringify([...next]));
     }
 
     return (
@@ -79,6 +104,9 @@ export default function AnnouncementsScreen() {
                 style={styles.container}
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
+                }
             >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()}>
@@ -87,7 +115,7 @@ export default function AnnouncementsScreen() {
 
                     <Text style={styles.title}>Announcements</Text>
                     <Text style={styles.subtitle}>
-                        View important class updates from course reps.
+                        Class updates posted by your course reps.
                     </Text>
                 </View>
 
@@ -132,7 +160,19 @@ export default function AnnouncementsScreen() {
                     ))}
                 </ScrollView>
 
-                {filteredAnnouncements.length === 0 ? (
+                {isLoading ? (
+                    <View style={styles.centered}>
+                        <ActivityIndicator size="large" color={AppColors.primary} />
+                    </View>
+                ) : error ? (
+                    <View style={styles.emptyCard}>
+                        <Text style={styles.emptyTitle}>Couldn&apos;t load announcements</Text>
+                        <Text style={styles.emptyText}>{error}</Text>
+                        <TouchableOpacity style={styles.readButton} onPress={loadAnnouncements}>
+                            <Text style={styles.readButtonText}>Try again</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : filteredAnnouncements.length === 0 ? (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>
                             {activeFilter === 'All'
@@ -140,60 +180,51 @@ export default function AnnouncementsScreen() {
                                 : `No ${activeFilter.toLowerCase()} announcements`}
                         </Text>
                         <Text style={styles.emptyText}>
-                            Announcements posted by course reps will appear here with
-                            categories, class group targeting, and read status.
+                            When a course rep posts an update it will appear here. Pull down to refresh.
                         </Text>
                     </View>
                 ) : (
-                    filteredAnnouncements.map((announcement) => (
-                        <View
-                            key={announcement.id}
-                            style={[
-                                styles.announcementCard,
-                                !announcement.isRead && styles.unreadCard,
-                            ]}
-                        >
-                            <View style={styles.cardHeader}>
-                                <Text style={styles.category}>{announcement.category}</Text>
+                    filteredAnnouncements.map((announcement) => {
+                        const isRead = readIds.has(announcement.id);
+                        return (
+                            <View
+                                key={announcement.id}
+                                style={[styles.announcementCard, !isRead && styles.unreadCard]}
+                            >
+                                <View style={styles.cardHeader}>
+                                    <Text style={styles.category}>{announcement.category}</Text>
 
-                                {!announcement.isRead && (
-                                    <View style={styles.unreadBadge}>
-                                        <Text style={styles.unreadBadgeText}>Unread</Text>
-                                    </View>
+                                    {!isRead && (
+                                        <View style={styles.unreadBadge}>
+                                            <Text style={styles.unreadBadgeText}>Unread</Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <Text style={styles.announcementTitle}>{announcement.title}</Text>
+                                <Text style={styles.message}>{announcement.message}</Text>
+
+                                <View style={styles.targetBox}>
+                                    <Text style={styles.targetLabel}>Target group</Text>
+                                    <Text style={styles.targetText}>{announcement.targetClassGroup}</Text>
+                                </View>
+
+                                {!isRead && (
+                                    <TouchableOpacity
+                                        style={styles.readButton}
+                                        onPress={() => handleMarkAsRead(announcement.id)}
+                                    >
+                                        <Text style={styles.readButtonText}>Mark as read</Text>
+                                    </TouchableOpacity>
                                 )}
+
+                                <View style={styles.footer}>
+                                    <Text style={styles.footerText}>{announcement.postedBy}</Text>
+                                    <Text style={styles.footerText}>{announcement.postedAt}</Text>
+                                </View>
                             </View>
-
-                            <Text style={styles.announcementTitle}>
-                                {announcement.title}
-                            </Text>
-                            <Text style={styles.message}>{announcement.message}</Text>
-
-                            <View style={styles.targetBox}>
-                                <Text style={styles.targetLabel}>Target group</Text>
-                                <Text style={styles.targetText}>
-                                    {announcement.targetClassGroup}
-                                </Text>
-                            </View>
-
-                            {!announcement.isRead && (
-                                <TouchableOpacity
-                                    style={styles.readButton}
-                                    onPress={() => handleMarkAsRead(announcement.id)}
-                                >
-                                    <Text style={styles.readButtonText}>Mark as Read</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            <View style={styles.footer}>
-                                <Text style={styles.footerText}>
-                                    {announcement.postedBy}
-                                </Text>
-                                <Text style={styles.footerText}>
-                                    {announcement.postedAt}
-                                </Text>
-                            </View>
-                        </View>
-                    ))
+                        );
+                    })
                 )}
             </ScrollView>
         </SafeAreaView>
@@ -289,6 +320,10 @@ const styles = StyleSheet.create({
     },
     activeFilterText: {
         color: AppColors.card,
+    },
+    centered: {
+        paddingVertical: 60,
+        alignItems: 'center',
     },
     emptyCard: {
         backgroundColor: AppColors.card,

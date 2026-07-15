@@ -1,8 +1,12 @@
 import { AppColors } from '@/constants/colors';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
+import { getItem, setItem } from '@/services/storage';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Alert,
+    ActivityIndicator,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,67 +15,92 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type AssignmentStatus = 'pending' | 'completed';
-
 type Assignment = {
     id: number;
     courseCode: string;
     title: string;
+    description: string;
     dueDate: string;
-    instructions: string;
-    fileName: string;
+    classGroup: string;
     postedBy: string;
-    status: AssignmentStatus;
 };
 
 type AssignmentTab = 'pending' | 'completed';
 
-// Backend data will be loaded into this list later.
-// Keep this empty for now so the app does not show fake assignment records.
-const initialAssignments: Assignment[] = [];
+const COMPLETED_IDS_KEY = 'completedAssignmentIds';
 
 export default function AssignmentsScreen() {
+    const { token } = useAuth();
     const [activeTab, setActiveTab] = useState<AssignmentTab>('pending');
-    const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments);
+    const [assignments, setAssignments] = useState<Assignment[]>([]);
+    const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadAssignments = useCallback(async () => {
+        try {
+            setError(null);
+            const data = await apiRequest<Assignment[]>('/assignments', { token });
+            setAssignments(data);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to load assignments.');
+        } finally {
+            setIsLoading(false);
+            setRefreshing(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        loadAssignments();
+    }, [loadAssignments]);
+
+    // Completion is tracked on the device, since the backend does not store it.
+    useEffect(() => {
+        (async () => {
+            const raw = await getItem(COMPLETED_IDS_KEY);
+            if (raw) {
+                try {
+                    setCompletedIds(new Set<number>(JSON.parse(raw)));
+                } catch {
+                    // ignore malformed cache
+                }
+            }
+        })();
+    }, []);
 
     const pendingAssignments = useMemo(
-        () => assignments.filter((assignment) => assignment.status === 'pending'),
-        [assignments]
+        () => assignments.filter((a) => !completedIds.has(a.id)),
+        [assignments, completedIds]
     );
 
     const completedAssignments = useMemo(
-        () => assignments.filter((assignment) => assignment.status === 'completed'),
-        [assignments]
+        () => assignments.filter((a) => completedIds.has(a.id)),
+        [assignments, completedIds]
     );
 
-    const visibleAssignments =
-        activeTab === 'pending' ? pendingAssignments : completedAssignments;
+    const visibleAssignments = activeTab === 'pending' ? pendingAssignments : completedAssignments;
 
-    function handleMarkAsDone(assignmentId: number) {
-        setAssignments((currentAssignments) =>
-            currentAssignments.map((assignment) =>
-                assignment.id === assignmentId
-                    ? { ...assignment, status: 'completed' }
-                    : assignment
-            )
-        );
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadAssignments();
+    };
+
+    async function persistCompleted(next: Set<number>) {
+        setCompletedIds(next);
+        await setItem(COMPLETED_IDS_KEY, JSON.stringify([...next]));
     }
 
-    function handleMoveToPending(assignmentId: number) {
-        setAssignments((currentAssignments) =>
-            currentAssignments.map((assignment) =>
-                assignment.id === assignmentId
-                    ? { ...assignment, status: 'pending' }
-                    : assignment
-            )
-        );
+    async function handleMarkAsDone(assignmentId: number) {
+        const next = new Set(completedIds);
+        next.add(assignmentId);
+        await persistCompleted(next);
     }
 
-    function handleOpenFile() {
-        Alert.alert(
-            'File opening not connected yet',
-            'Assignment files will open or download when backend file storage is connected.'
-        );
+    async function handleMoveToPending(assignmentId: number) {
+        const next = new Set(completedIds);
+        next.delete(assignmentId);
+        await persistCompleted(next);
     }
 
     return (
@@ -80,6 +109,9 @@ export default function AssignmentsScreen() {
                 style={styles.container}
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
+                }
             >
                 <TouchableOpacity onPress={() => router.back()}>
                     <Text style={styles.backText}>Back</Text>
@@ -87,7 +119,7 @@ export default function AssignmentsScreen() {
 
                 <Text style={styles.title}>Assignments</Text>
                 <Text style={styles.subtitle}>
-                    Track pending assignments, view attached files, and mark completed work.
+                    Track due dates and mark work as done.
                 </Text>
 
                 <View style={styles.summaryCard}>
@@ -106,103 +138,79 @@ export default function AssignmentsScreen() {
 
                 <View style={styles.tabContainer}>
                     <TouchableOpacity
-                        style={[
-                            styles.tabButton,
-                            activeTab === 'pending' && styles.activeTabButton,
-                        ]}
+                        style={[styles.tabButton, activeTab === 'pending' && styles.activeTabButton]}
                         onPress={() => setActiveTab('pending')}
                     >
-                        <Text
-                            style={[
-                                styles.tabText,
-                                activeTab === 'pending' && styles.activeTabText,
-                            ]}
-                        >
-                            Pending
-                        </Text>
+                        <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>Pending</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[
-                            styles.tabButton,
-                            activeTab === 'completed' && styles.activeTabButton,
-                        ]}
+                        style={[styles.tabButton, activeTab === 'completed' && styles.activeTabButton]}
                         onPress={() => setActiveTab('completed')}
                     >
-                        <Text
-                            style={[
-                                styles.tabText,
-                                activeTab === 'completed' && styles.activeTabText,
-                            ]}
-                        >
-                            Completed
-                        </Text>
+                        <Text style={[styles.tabText, activeTab === 'completed' && styles.activeTabText]}>Completed</Text>
                     </TouchableOpacity>
                 </View>
 
-                {visibleAssignments.length === 0 ? (
+                {isLoading ? (
+                    <View style={styles.centered}>
+                        <ActivityIndicator size="large" color={AppColors.primary} />
+                    </View>
+                ) : error ? (
+                    <View style={styles.emptyCard}>
+                        <Text style={styles.emptyTitle}>Couldn&apos;t load assignments</Text>
+                        <Text style={styles.emptyText}>{error}</Text>
+                        <TouchableOpacity style={styles.doneButton} onPress={loadAssignments}>
+                            <Text style={styles.doneButtonText}>Try again</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : visibleAssignments.length === 0 ? (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>
-                            {activeTab === 'pending'
-                                ? 'No pending assignments'
-                                : 'No completed assignments'}
+                            {activeTab === 'pending' ? 'No pending assignments' : 'No completed assignments'}
                         </Text>
                         <Text style={styles.emptyText}>
                             {activeTab === 'pending'
-                                ? 'Assignments posted by course reps will appear here with due dates, instructions, and attached files.'
-                                : 'Assignments you mark as done will appear here so you can track completed work.'}
+                                ? 'Assignments posted by course reps appear here with due dates and instructions. Pull down to refresh.'
+                                : 'Assignments you mark as done appear here so you can track completed work.'}
                         </Text>
                     </View>
                 ) : (
-                    visibleAssignments.map((assignment) => (
-                        <View key={assignment.id} style={styles.assignmentCard}>
-                            <View style={styles.cardHeader}>
-                                <Text style={styles.courseCode}>{assignment.courseCode}</Text>
-                                <Text
-                                    style={[
-                                        styles.statusBadge,
-                                        assignment.status === 'completed' && styles.completedBadge,
-                                    ]}
-                                >
-                                    {assignment.status === 'pending' ? 'Pending' : 'Completed'}
-                                </Text>
+                    visibleAssignments.map((assignment) => {
+                        const isCompleted = completedIds.has(assignment.id);
+                        return (
+                            <View key={assignment.id} style={styles.assignmentCard}>
+                                <View style={styles.cardHeader}>
+                                    <Text style={styles.courseCode}>{assignment.courseCode}</Text>
+                                    <Text style={[styles.statusBadge, isCompleted && styles.completedBadge]}>
+                                        {isCompleted ? 'Completed' : 'Pending'}
+                                    </Text>
+                                </View>
+
+                                <Text style={styles.assignmentTitle}>{assignment.title}</Text>
+                                <Text style={styles.dueDate}>Due: {assignment.dueDate}</Text>
+                                <Text style={styles.instructions}>{assignment.description}</Text>
+
+                                {!isCompleted ? (
+                                    <TouchableOpacity
+                                        style={styles.doneButton}
+                                        onPress={() => handleMarkAsDone(assignment.id)}
+                                    >
+                                        <Text style={styles.doneButtonText}>Mark as done</Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <TouchableOpacity
+                                        style={styles.undoButton}
+                                        onPress={() => handleMoveToPending(assignment.id)}
+                                    >
+                                        <Text style={styles.undoButtonText}>Move back to pending</Text>
+                                    </TouchableOpacity>
+                                )}
+
+                                <Text style={styles.postedBy}>Posted by {assignment.postedBy}</Text>
                             </View>
-
-                            <Text style={styles.assignmentTitle}>{assignment.title}</Text>
-                            <Text style={styles.dueDate}>Due: {assignment.dueDate}</Text>
-                            <Text style={styles.instructions}>{assignment.instructions}</Text>
-
-                            <View style={styles.fileBox}>
-                                <Text style={styles.fileLabel}>Attached file</Text>
-                                <Text style={styles.fileName}>{assignment.fileName}</Text>
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.downloadButton}
-                                onPress={handleOpenFile}
-                            >
-                                <Text style={styles.downloadButtonText}>Open File</Text>
-                            </TouchableOpacity>
-
-                            {assignment.status === 'pending' ? (
-                                <TouchableOpacity
-                                    style={styles.doneButton}
-                                    onPress={() => handleMarkAsDone(assignment.id)}
-                                >
-                                    <Text style={styles.doneButtonText}>Mark as Done</Text>
-                                </TouchableOpacity>
-                            ) : (
-                                <TouchableOpacity
-                                    style={styles.undoButton}
-                                    onPress={() => handleMoveToPending(assignment.id)}
-                                >
-                                    <Text style={styles.undoButtonText}>Move Back to Pending</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            <Text style={styles.postedBy}>Posted by {assignment.postedBy}</Text>
-                        </View>
-                    ))
+                        );
+                    })
                 )}
             </ScrollView>
         </SafeAreaView>
@@ -296,6 +304,10 @@ const styles = StyleSheet.create({
     activeTabText: {
         color: AppColors.card,
     },
+    centered: {
+        paddingVertical: 60,
+        alignItems: 'center',
+    },
     emptyCard: {
         backgroundColor: AppColors.card,
         borderRadius: 18,
@@ -370,37 +382,6 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         lineHeight: 21,
         marginBottom: 14,
-    },
-    fileBox: {
-        backgroundColor: AppColors.background,
-        borderRadius: 12,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-        marginBottom: 12,
-    },
-    fileLabel: {
-        fontSize: 12,
-        color: AppColors.mutedText,
-        fontWeight: '700',
-        marginBottom: 4,
-    },
-    fileName: {
-        fontSize: 14,
-        color: AppColors.text,
-        fontWeight: '800',
-    },
-    downloadButton: {
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: AppColors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    downloadButtonText: {
-        color: AppColors.card,
-        fontSize: 15,
-        fontWeight: '800',
     },
     doneButton: {
         height: 48,

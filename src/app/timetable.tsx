@@ -1,7 +1,11 @@
 import { AppColors } from '@/constants/colors';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -9,8 +13,6 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-type TimetableStatus = 'active' | 'venue_changed' | 'time_changed' | 'cancelled';
 
 type TimetableRecord = {
     id: number;
@@ -22,14 +24,10 @@ type TimetableRecord = {
     venue: string;
     lecturer: string;
     classGroup: string;
-    status: TimetableStatus;
+    status: string;
 };
 
 type TimetableTab = 'today' | 'tomorrow' | 'week';
-
-// Backend data will be loaded into this list later.
-// Keep this empty for now so the app does not show fake timetable records.
-const timetableRecords: TimetableRecord[] = [];
 
 const weekDays = [
     'Sunday',
@@ -50,45 +48,67 @@ function getTomorrowName() {
     return weekDays[tomorrowIndex];
 }
 
-function formatStatusLabel(status: TimetableStatus) {
+function formatStatusLabel(status: string) {
     if (status === 'active') return 'Active';
     if (status === 'venue_changed') return 'Venue Changed';
     if (status === 'time_changed') return 'Time Changed';
-    return 'Cancelled';
+    if (status === 'cancelled') return 'Cancelled';
+    return status;
 }
 
 export default function TimetableScreen() {
+    const { token } = useAuth();
     const [activeTab, setActiveTab] = useState<TimetableTab>('today');
+    const [records, setRecords] = useState<TimetableRecord[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const todayName = getTodayName();
     const tomorrowName = getTomorrowName();
 
+    const loadTimetable = useCallback(async () => {
+        try {
+            setError(null);
+            const data = await apiRequest<TimetableRecord[]>('/timetable', { token });
+            setRecords(data);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to load the timetable.');
+        } finally {
+            setIsLoading(false);
+            setRefreshing(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        loadTimetable();
+    }, [loadTimetable]);
+
     const todayRecords = useMemo(
-        () => timetableRecords.filter((record) => record.dayOfWeek === todayName),
-        [todayName]
+        () => records.filter((r) => r.dayOfWeek === todayName),
+        [records, todayName]
     );
 
     const tomorrowRecords = useMemo(
-        () => timetableRecords.filter((record) => record.dayOfWeek === tomorrowName),
-        [tomorrowName]
+        () => records.filter((r) => r.dayOfWeek === tomorrowName),
+        [records, tomorrowName]
     );
 
     const visibleRecords = useMemo(() => {
         if (activeTab === 'today') return todayRecords;
         if (activeTab === 'tomorrow') return tomorrowRecords;
-        return timetableRecords;
-    }, [activeTab, todayRecords, tomorrowRecords]);
+        return records;
+    }, [activeTab, todayRecords, tomorrowRecords, records]);
 
-    const activeClassesCount = timetableRecords.filter(
-        (record) => record.status !== 'cancelled'
+    const activeClassesCount = records.filter((r) => r.status !== 'cancelled').length;
+    const changedClassesCount = records.filter(
+        (r) => r.status === 'venue_changed' || r.status === 'time_changed' || r.status === 'cancelled'
     ).length;
 
-    const changedClassesCount = timetableRecords.filter(
-        (record) =>
-            record.status === 'venue_changed' ||
-            record.status === 'time_changed' ||
-            record.status === 'cancelled'
-    ).length;
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadTimetable();
+    };
 
     function getEmptyTitle() {
         if (activeTab === 'today') return 'No classes for today';
@@ -97,15 +117,9 @@ export default function TimetableScreen() {
     }
 
     function getEmptyText() {
-        if (activeTab === 'today') {
-            return 'Your classes for today will appear here after timetable records are added by the course rep or admin.';
-        }
-
-        if (activeTab === 'tomorrow') {
-            return "Tomorrow's classes will appear here after the timetable is synced from the backend.";
-        }
-
-        return 'Structured weekly timetable records will appear here. This allows the app to show next class, venue changes, cancellations, and reminders.';
+        if (activeTab === 'today') return 'You have no classes scheduled for today. Pull down to refresh.';
+        if (activeTab === 'tomorrow') return 'You have no classes scheduled for tomorrow. Pull down to refresh.';
+        return 'Your weekly classes will appear here once your course rep adds them.';
     }
 
     return (
@@ -114,6 +128,9 @@ export default function TimetableScreen() {
                 style={styles.container}
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
+                }
             >
                 <TouchableOpacity onPress={() => router.back()}>
                     <Text style={styles.backText}>Back</Text>
@@ -121,18 +138,8 @@ export default function TimetableScreen() {
 
                 <Text style={styles.title}>Timetable</Text>
                 <Text style={styles.subtitle}>
-                    View today's classes, tomorrow's classes, and your full weekly timetable.
+                    Today, tomorrow, and your full week at a glance.
                 </Text>
-
-                <View style={styles.fileCard}>
-                    <Text style={styles.fileLabel}>Official Timetable File</Text>
-                    <Text style={styles.fileTitle}>No timetable file uploaded yet</Text>
-                    <Text style={styles.fileText}>
-                        When the department releases the official timetable, the course rep
-                        or admin can upload it here while structured class records power
-                        reminders and schedule updates.
-                    </Text>
-                </View>
 
                 <View style={styles.summaryCard}>
                     <View style={styles.summaryItem}>
@@ -150,54 +157,24 @@ export default function TimetableScreen() {
 
                 <View style={styles.tabContainer}>
                     <TouchableOpacity
-                        style={[
-                            styles.tabButton,
-                            activeTab === 'today' && styles.activeTabButton,
-                        ]}
+                        style={[styles.tabButton, activeTab === 'today' && styles.activeTabButton]}
                         onPress={() => setActiveTab('today')}
                     >
-                        <Text
-                            style={[
-                                styles.tabText,
-                                activeTab === 'today' && styles.activeTabText,
-                            ]}
-                        >
-                            Today
-                        </Text>
+                        <Text style={[styles.tabText, activeTab === 'today' && styles.activeTabText]}>Today</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[
-                            styles.tabButton,
-                            activeTab === 'tomorrow' && styles.activeTabButton,
-                        ]}
+                        style={[styles.tabButton, activeTab === 'tomorrow' && styles.activeTabButton]}
                         onPress={() => setActiveTab('tomorrow')}
                     >
-                        <Text
-                            style={[
-                                styles.tabText,
-                                activeTab === 'tomorrow' && styles.activeTabText,
-                            ]}
-                        >
-                            Tomorrow
-                        </Text>
+                        <Text style={[styles.tabText, activeTab === 'tomorrow' && styles.activeTabText]}>Tomorrow</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[
-                            styles.tabButton,
-                            activeTab === 'week' && styles.activeTabButton,
-                        ]}
+                        style={[styles.tabButton, activeTab === 'week' && styles.activeTabButton]}
                         onPress={() => setActiveTab('week')}
                     >
-                        <Text
-                            style={[
-                                styles.tabText,
-                                activeTab === 'week' && styles.activeTabText,
-                            ]}
-                        >
-                            Week
-                        </Text>
+                        <Text style={[styles.tabText, activeTab === 'week' && styles.activeTabText]}>Week</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -210,7 +187,19 @@ export default function TimetableScreen() {
                                 : 'Weekly Timetable'}
                     </Text>
 
-                    {visibleRecords.length === 0 ? (
+                    {isLoading ? (
+                        <View style={styles.centered}>
+                            <ActivityIndicator size="large" color={AppColors.primary} />
+                        </View>
+                    ) : error ? (
+                        <View style={styles.emptyCard}>
+                            <Text style={styles.emptyTitle}>Couldn&apos;t load the timetable</Text>
+                            <Text style={styles.emptyText}>{error}</Text>
+                            <TouchableOpacity style={styles.retryButton} onPress={loadTimetable}>
+                                <Text style={styles.retryButtonText}>Try again</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : visibleRecords.length === 0 ? (
                         <View style={styles.emptyCard}>
                             <Text style={styles.emptyTitle}>{getEmptyTitle()}</Text>
                             <Text style={styles.emptyText}>{getEmptyText()}</Text>
@@ -223,8 +212,7 @@ export default function TimetableScreen() {
                                     <Text
                                         style={[
                                             styles.status,
-                                            record.status === 'cancelled' &&
-                                            styles.cancelledStatus,
+                                            record.status === 'cancelled' && styles.cancelledStatus,
                                         ]}
                                     >
                                         {formatStatusLabel(record.status)}
@@ -238,24 +226,11 @@ export default function TimetableScreen() {
                                 </Text>
 
                                 <Text style={styles.classDetail}>Venue: {record.venue}</Text>
-                                <Text style={styles.classDetail}>
-                                    Lecturer: {record.lecturer}
-                                </Text>
-                                <Text style={styles.classDetail}>
-                                    Class Group: {record.classGroup}
-                                </Text>
+                                <Text style={styles.classDetail}>Lecturer: {record.lecturer}</Text>
+                                <Text style={styles.classDetail}>Class Group: {record.classGroup}</Text>
                             </View>
                         ))
                     )}
-                </View>
-
-                <View style={styles.noteCard}>
-                    <Text style={styles.noteTitle}>Backend-ready timetable design</Text>
-                    <Text style={styles.noteText}>
-                        The app keeps the official timetable file and structured class
-                        records separate. This allows one venue, time, or cancellation update
-                        to be changed without replacing the whole timetable file.
-                    </Text>
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -291,29 +266,6 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         marginTop: 6,
         marginBottom: 18,
-        lineHeight: 20,
-    },
-    fileCard: {
-        backgroundColor: AppColors.primary,
-        borderRadius: 18,
-        padding: 18,
-        marginBottom: 16,
-    },
-    fileLabel: {
-        color: AppColors.accent,
-        fontSize: 13,
-        fontWeight: '800',
-        marginBottom: 8,
-    },
-    fileTitle: {
-        color: AppColors.card,
-        fontSize: 19,
-        fontWeight: '900',
-        marginBottom: 6,
-    },
-    fileText: {
-        color: AppColors.card,
-        fontSize: 14,
         lineHeight: 20,
     },
     summaryCard: {
@@ -381,6 +333,10 @@ const styles = StyleSheet.create({
         color: AppColors.text,
         marginBottom: 10,
     },
+    centered: {
+        paddingVertical: 60,
+        alignItems: 'center',
+    },
     emptyCard: {
         backgroundColor: AppColors.card,
         borderRadius: 18,
@@ -398,6 +354,19 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 21,
+    },
+    retryButton: {
+        height: 46,
+        borderRadius: 12,
+        backgroundColor: AppColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    retryButtonText: {
+        color: AppColors.card,
+        fontSize: 15,
+        fontWeight: '800',
     },
     classCard: {
         backgroundColor: AppColors.card,
@@ -437,23 +406,5 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         fontSize: 14,
         lineHeight: 21,
-    },
-    noteCard: {
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    noteTitle: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: AppColors.text,
-        marginBottom: 6,
-    },
-    noteText: {
-        fontSize: 14,
-        color: AppColors.mutedText,
-        lineHeight: 20,
     },
 });

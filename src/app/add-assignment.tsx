@@ -1,8 +1,10 @@
 import { AppColors } from '@/constants/colors';
-import * as DocumentPicker from 'expo-document-picker';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -15,77 +17,56 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type SelectedFile = {
-    name: string;
-    uri: string;
-    mimeType?: string;
-    size?: number;
-};
-
 export default function AddAssignmentScreen() {
+    const { token } = useAuth();
     const [courseCode, setCourseCode] = useState('');
     const [title, setTitle] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [instructions, setInstructions] = useState('');
-    const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSelectFile = async () => {
-        const result = await DocumentPicker.getDocumentAsync({
-            type: [
-                'application/pdf',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'image/*',
-            ],
-            copyToCacheDirectory: true,
-        });
-
-        if (result.canceled) {
-            return;
-        }
-
-        const file = result.assets[0];
-
-        setSelectedFile({
-            name: file.name,
-            uri: file.uri,
-            mimeType: file.mimeType,
-            size: file.size,
-        });
-    };
-
-    const handlePostAssignment = () => {
+    const handlePostAssignment = async () => {
         const cleanedCourseCode = courseCode.trim();
         const cleanedTitle = title.trim();
         const cleanedDueDate = dueDate.trim();
         const cleanedInstructions = instructions.trim();
 
         if (!cleanedCourseCode || !cleanedTitle || !cleanedDueDate) {
-            Alert.alert(
-                'Missing details',
-                'Please enter the course code, assignment title, and due date.'
-            );
+            Alert.alert('Missing details', 'Please enter the course code, assignment title, and due date.');
             return;
         }
 
-        if (!selectedFile) {
-            Alert.alert(
-                'No file selected',
-                'Please select the assignment file before posting.'
-            );
+        if (cleanedInstructions.length < 5) {
+            Alert.alert('Add instructions', 'Please add a short description of what students need to do.');
             return;
         }
 
-        Alert.alert(
-            'Assignment ready',
-            'The assignment form and file picker work. Backend upload will be connected later.'
-        );
+        try {
+            setIsSubmitting(true);
+            await apiRequest('/assignments', {
+                method: 'POST',
+                token,
+                body: {
+                    courseCode: cleanedCourseCode,
+                    title: cleanedTitle,
+                    dueDate: cleanedDueDate,
+                    description: cleanedInstructions,
+                },
+            });
 
-        setCourseCode('');
-        setTitle('');
-        setDueDate('');
-        setInstructions('');
-        setSelectedFile(null);
+            Alert.alert('Assignment posted', 'Students can now see this assignment.', [
+                { text: 'OK', onPress: () => router.back() },
+            ]);
+
+            setCourseCode('');
+            setTitle('');
+            setDueDate('');
+            setInstructions('');
+        } catch (e) {
+            Alert.alert('Could not post', e instanceof Error ? e.message : 'Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -105,7 +86,7 @@ export default function AddAssignmentScreen() {
 
                     <Text style={styles.title}>Add Assignment</Text>
                     <Text style={styles.subtitle}>
-                        Upload assignment details and attach the file students need.
+                        Post an assignment with its due date and instructions.
                     </Text>
 
                     <View style={styles.formCard}>
@@ -148,32 +129,23 @@ export default function AddAssignmentScreen() {
                             textAlignVertical="top"
                         />
 
-                        <Text style={styles.label}>Assignment File</Text>
-
-                        <TouchableOpacity style={styles.fileButton} onPress={handleSelectFile}>
-                            <Text style={styles.fileButtonText}>Select File</Text>
-                        </TouchableOpacity>
-
-                        <View style={styles.filePreview}>
-                            <Text style={styles.filePreviewLabel}>Selected file</Text>
-                            <Text style={styles.filePreviewText}>
-                                {selectedFile ? selectedFile.name : 'No file selected'}
-                            </Text>
-                        </View>
-
                         <TouchableOpacity
-                            style={styles.postButton}
+                            style={[styles.postButton, isSubmitting && styles.disabledButton]}
                             onPress={handlePostAssignment}
+                            disabled={isSubmitting}
                         >
-                            <Text style={styles.postButtonText}>Post Assignment</Text>
+                            {isSubmitting ? (
+                                <ActivityIndicator color={AppColors.card} />
+                            ) : (
+                                <Text style={styles.postButtonText}>Post Assignment</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.noteCard}>
-                        <Text style={styles.noteTitle}>Assignment upload guide</Text>
+                        <Text style={styles.noteTitle}>Assignment guide</Text>
                         <Text style={styles.noteText}>
-                            Attach the original assignment file when available. Add a short
-                            description so students know what to do and when to submit.
+                            Add a clear title and instructions so students know what to do and when to submit.
                         </Text>
                     </View>
                 </ScrollView>
@@ -253,45 +225,15 @@ const styles = StyleSheet.create({
         backgroundColor: AppColors.background,
         lineHeight: 21,
     },
-    fileButton: {
-        height: 50,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: AppColors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    fileButtonText: {
-        color: AppColors.primary,
-        fontSize: 15,
-        fontWeight: '800',
-    },
-    filePreview: {
-        backgroundColor: AppColors.background,
-        borderRadius: 12,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-        marginBottom: 20,
-    },
-    filePreviewLabel: {
-        fontSize: 12,
-        color: AppColors.mutedText,
-        fontWeight: '700',
-        marginBottom: 4,
-    },
-    filePreviewText: {
-        fontSize: 14,
-        color: AppColors.text,
-        fontWeight: '700',
-    },
     postButton: {
         height: 52,
         borderRadius: 12,
         backgroundColor: AppColors.primary,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    disabledButton: {
+        backgroundColor: AppColors.primaryDark,
     },
     postButtonText: {
         color: AppColors.card,

@@ -1,8 +1,10 @@
 import { AppColors } from '@/constants/colors';
-import * as DocumentPicker from 'expo-document-picker';
+import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -15,17 +17,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type SelectedFile = {
-    name: string;
-    uri: string;
-    mimeType?: string;
-    size?: number;
-};
-
 type ClassStatus = 'Normal' | 'Venue Changed' | 'Time Changed' | 'Cancelled';
 
+// Map the rep-facing labels to the status values the backend/student app use.
+const STATUS_MAP: Record<ClassStatus, string> = {
+    Normal: 'active',
+    'Venue Changed': 'venue_changed',
+    'Time Changed': 'time_changed',
+    Cancelled: 'cancelled',
+};
+
 export default function ManageTimetableScreen() {
-    const [officialFile, setOfficialFile] = useState<SelectedFile | null>(null);
+    const { token } = useAuth();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [courseCode, setCourseCode] = useState('');
     const [courseTitle, setCourseTitle] = useState('');
@@ -43,31 +47,6 @@ export default function ManageTimetableScreen() {
     const [updateReason, setUpdateReason] = useState('');
     const [makeUpClassInfo, setMakeUpClassInfo] = useState('');
 
-    const handleSelectTimetableFile = async () => {
-        const result = await DocumentPicker.getDocumentAsync({
-            type: [
-                'application/pdf',
-                'application/vnd.ms-excel',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'image/*',
-            ],
-            copyToCacheDirectory: true,
-        });
-
-        if (result.canceled) {
-            return;
-        }
-
-        const file = result.assets[0];
-
-        setOfficialFile({
-            name: file.name,
-            uri: file.uri,
-            mimeType: file.mimeType,
-            size: file.size,
-        });
-    };
-
     const resetUpdateFields = () => {
         setOldVenue('');
         setNewVenue('');
@@ -82,13 +61,14 @@ export default function ManageTimetableScreen() {
         resetUpdateFields();
     };
 
-    const handleSaveClass = () => {
+    const handleSaveClass = async () => {
         const cleanedCourseCode = courseCode.trim();
         const cleanedCourseTitle = courseTitle.trim();
         const cleanedDay = day.trim();
         const cleanedStartTime = startTime.trim();
         const cleanedEndTime = endTime.trim();
         const cleanedVenue = venue.trim();
+        const cleanedLecturer = lecturer.trim();
 
         if (
             !cleanedCourseCode ||
@@ -96,53 +76,67 @@ export default function ManageTimetableScreen() {
             !cleanedDay ||
             !cleanedStartTime ||
             !cleanedEndTime ||
-            !cleanedVenue
+            !cleanedVenue ||
+            !cleanedLecturer
         ) {
             Alert.alert(
                 'Missing details',
-                'Please enter the course code, course title, day, time, and venue.'
+                'Please enter the course code, course title, day, time, venue, and lecturer.'
             );
             return;
         }
 
         if (status === 'Venue Changed' && (!oldVenue.trim() || !newVenue.trim())) {
-            Alert.alert(
-                'Missing venue update',
-                'Please enter both the old venue and the new venue.'
-            );
+            Alert.alert('Missing venue update', 'Please enter both the old venue and the new venue.');
             return;
         }
 
         if (status === 'Time Changed' && (!oldTime.trim() || !newTime.trim())) {
-            Alert.alert(
-                'Missing time update',
-                'Please enter both the old time and the new time.'
-            );
+            Alert.alert('Missing time update', 'Please enter both the old time and the new time.');
             return;
         }
 
         if (status === 'Cancelled' && !updateReason.trim()) {
-            Alert.alert(
-                'Missing cancellation reason',
-                'Please enter why the class was cancelled.'
-            );
+            Alert.alert('Missing cancellation reason', 'Please enter why the class was cancelled.');
             return;
         }
 
-        Alert.alert(
-            'Class record ready',
-            'The timetable form works. Backend saving will be connected later.'
-        );
+        try {
+            setIsSubmitting(true);
+            await apiRequest('/timetable', {
+                method: 'POST',
+                token,
+                body: {
+                    courseCode: cleanedCourseCode,
+                    courseTitle: cleanedCourseTitle,
+                    dayOfWeek: cleanedDay,
+                    startTime: cleanedStartTime,
+                    endTime: cleanedEndTime,
+                    venue: cleanedVenue,
+                    lecturer: cleanedLecturer,
+                    classGroup: 'ALL',
+                    status: STATUS_MAP[status],
+                },
+            });
 
-        setCourseCode('');
-        setCourseTitle('');
-        setDay('');
-        setStartTime('');
-        setEndTime('');
-        setVenue('');
-        setLecturer('');
-        setStatus('Normal');
-        resetUpdateFields();
+            Alert.alert('Class saved', 'This class now appears in the student timetable.', [
+                { text: 'OK', onPress: () => router.back() },
+            ]);
+
+            setCourseCode('');
+            setCourseTitle('');
+            setDay('');
+            setStartTime('');
+            setEndTime('');
+            setVenue('');
+            setLecturer('');
+            setStatus('Normal');
+            resetUpdateFields();
+        } catch (e) {
+            Alert.alert('Could not save', e instanceof Error ? e.message : 'Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const statusOptions: ClassStatus[] = [
@@ -169,35 +163,13 @@ export default function ManageTimetableScreen() {
 
                     <Text style={styles.title}>Manage Timetable</Text>
                     <Text style={styles.subtitle}>
-                        Upload the official timetable file and add editable class records for students.
+                        Add class records so students see today, tomorrow, and the full week.
                     </Text>
-
-                    <View style={styles.fileCard}>
-                        <Text style={styles.sectionTitle}>Official Timetable File</Text>
-                        <Text style={styles.helperText}>
-                            Upload the department timetable as PDF, Excel, or image for reference.
-                        </Text>
-
-                        <TouchableOpacity
-                            style={styles.fileButton}
-                            onPress={handleSelectTimetableFile}
-                        >
-                            <Text style={styles.fileButtonText}>Select Timetable File</Text>
-                        </TouchableOpacity>
-
-                        <View style={styles.filePreview}>
-                            <Text style={styles.filePreviewLabel}>Selected file</Text>
-                            <Text style={styles.filePreviewText}>
-                                {officialFile ? officialFile.name : 'No file selected'}
-                            </Text>
-                        </View>
-                    </View>
 
                     <View style={styles.formCard}>
                         <Text style={styles.sectionTitle}>Add Class Record</Text>
                         <Text style={styles.helperText}>
-                            These records allow the app to show today's classes, next class,
-                            venue changes, and reminders.
+                            Each record powers the student timetable, next-class view, and status updates.
                         </Text>
 
                         <Text style={styles.label}>Course Code</Text>
@@ -389,18 +361,17 @@ export default function ManageTimetableScreen() {
                             </View>
                         )}
 
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSaveClass}>
-                            <Text style={styles.saveButtonText}>Save Class Record</Text>
+                        <TouchableOpacity
+                            style={[styles.saveButton, isSubmitting && styles.disabledButton]}
+                            onPress={handleSaveClass}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color={AppColors.card} />
+                            ) : (
+                                <Text style={styles.saveButtonText}>Save Class Record</Text>
+                            )}
                         </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.noteCard}>
-                        <Text style={styles.noteTitle}>Why both file and records?</Text>
-                        <Text style={styles.noteText}>
-                            The official file keeps the department's original timetable.
-                            The editable records let course reps update only one venue or time
-                            when lecturers make changes.
-                        </Text>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -589,6 +560,9 @@ const styles = StyleSheet.create({
         color: AppColors.card,
         fontSize: 16,
         fontWeight: '800',
+    },
+    disabledButton: {
+        backgroundColor: AppColors.primaryDark,
     },
     noteCard: {
         marginTop: 18,
