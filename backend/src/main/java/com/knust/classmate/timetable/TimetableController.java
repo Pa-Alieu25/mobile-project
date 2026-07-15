@@ -1,5 +1,6 @@
 package com.knust.classmate.timetable;
 
+import com.knust.classmate.exception.ApiException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -42,5 +43,24 @@ public class TimetableController {
             .status(request.status() != null ? request.status() : "active")
             .build();
         return ResponseEntity.status(HttpStatus.CREATED).body(timetableRepository.save(record));
+    }
+
+    // Update a class's status (e.g. mark it cancelled or restore it to active).
+    @PutMapping("/{id}/status")
+    public ResponseEntity<TimetableRecord> updateStatus(@PathVariable Long id,
+                                                        @Valid @RequestBody StatusUpdateRequest request) {
+        TimetableRecord record = timetableRepository.findById(id)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Class not found."));
+        record.setStatus(request.status());
+        return ResponseEntity.ok(timetableRepository.save(record));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (!timetableRepository.existsById(id)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Class not found.");
+        }
+        timetableRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }

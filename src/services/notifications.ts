@@ -152,3 +152,49 @@ export async function notifyNewScores(scores: ScoreNotice[]): Promise<void> {
     const allIds = scores.map((s) => s.id);
     await setItem(SEEN_SCORE_IDS_KEY, JSON.stringify([...new Set([...seen, ...allIds])]));
 }
+
+const ALERTED_CANCELLED_KEY = 'alertedCancelledClassIds';
+
+export type CancelledClassNotice = { id: number; courseCode: string; dayOfWeek: string };
+
+// Fires a local notification for any newly-cancelled class the student hasn't
+// been alerted about yet. Same on-device approach as scores: only when
+// permission is already granted, and each cancellation alerts once.
+export async function notifyCancelledClasses(cancelled: CancelledClassNotice[]): Promise<void> {
+    const raw = await getItem(ALERTED_CANCELLED_KEY);
+    let alerted: number[] = [];
+    if (raw) {
+        try {
+            alerted = JSON.parse(raw);
+        } catch {
+            // ignore malformed cache
+        }
+    }
+    const alertedSet = new Set(alerted);
+    const fresh = cancelled.filter((c) => !alertedSet.has(c.id));
+    if (fresh.length === 0) return;
+
+    const perms = await Notifications.getPermissionsAsync();
+    if (perms.granted) {
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+                name: 'Class reminders',
+                importance: Notifications.AndroidImportance.HIGH,
+            });
+        }
+        for (const c of fresh) {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: 'Class cancelled',
+                    body: `${c.courseCode} (${c.dayOfWeek}) has been cancelled.`,
+                },
+                trigger: null, // present immediately
+            });
+        }
+    }
+
+    await setItem(
+        ALERTED_CANCELLED_KEY,
+        JSON.stringify([...new Set([...alerted, ...cancelled.map((c) => c.id)])])
+    );
+}

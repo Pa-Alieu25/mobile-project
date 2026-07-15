@@ -2,7 +2,7 @@ import { AppColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -27,9 +27,29 @@ const STATUS_MAP: Record<ClassStatus, string> = {
     Cancelled: 'cancelled',
 };
 
+type TimetableRecord = {
+    id: number;
+    courseCode: string;
+    courseTitle: string;
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    venue: string;
+    status: string;
+};
+
+function statusLabel(status: string) {
+    if (status === 'cancelled') return 'Cancelled';
+    if (status === 'venue_changed') return 'Venue changed';
+    if (status === 'time_changed') return 'Time changed';
+    return 'Active';
+}
+
 export default function ManageTimetableScreen() {
     const { token } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [existingClasses, setExistingClasses] = useState<TimetableRecord[]>([]);
+    const [isLoadingList, setIsLoadingList] = useState(true);
 
     const [courseCode, setCourseCode] = useState('');
     const [courseTitle, setCourseTitle] = useState('');
@@ -59,6 +79,59 @@ export default function ManageTimetableScreen() {
     const handleStatusChange = (selectedStatus: ClassStatus) => {
         setStatus(selectedStatus);
         resetUpdateFields();
+    };
+
+    const loadClasses = useCallback(async () => {
+        try {
+            const data = await apiRequest<TimetableRecord[]>('/timetable', { token });
+            setExistingClasses(data);
+        } catch {
+            // leave the list as-is on failure
+        } finally {
+            setIsLoadingList(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        loadClasses();
+    }, [loadClasses]);
+
+    const setClassStatus = async (id: number, newStatus: string) => {
+        try {
+            await apiRequest(`/timetable/${id}/status`, {
+                method: 'PUT',
+                token,
+                body: { status: newStatus },
+            });
+            await loadClasses();
+        } catch (e) {
+            Alert.alert('Could not update', e instanceof Error ? e.message : 'Please try again.');
+        }
+    };
+
+    const handleCancelClass = (record: TimetableRecord) => {
+        Alert.alert('Cancel this class?', `${record.courseCode} on ${record.dayOfWeek} will show as cancelled and students will be alerted.`, [
+            { text: 'Keep', style: 'cancel' },
+            { text: 'Cancel class', style: 'destructive', onPress: () => setClassStatus(record.id, 'cancelled') },
+        ]);
+    };
+
+    const handleDeleteClass = (record: TimetableRecord) => {
+        Alert.alert('Delete this class?', `${record.courseCode} on ${record.dayOfWeek} will be removed from the timetable.`, [
+            { text: 'Keep', style: 'cancel' },
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await apiRequest(`/timetable/${record.id}`, { method: 'DELETE', token });
+                        await loadClasses();
+                    } catch (e) {
+                        Alert.alert('Could not delete', e instanceof Error ? e.message : 'Please try again.');
+                    }
+                },
+            },
+        ]);
     };
 
     const handleSaveClass = async () => {
@@ -119,9 +192,7 @@ export default function ManageTimetableScreen() {
                 },
             });
 
-            Alert.alert('Class saved', 'This class now appears in the student timetable.', [
-                { text: 'OK', onPress: () => router.back() },
-            ]);
+            Alert.alert('Class saved', 'This class now appears in the student timetable.');
 
             setCourseCode('');
             setCourseTitle('');
@@ -132,6 +203,7 @@ export default function ManageTimetableScreen() {
             setLecturer('');
             setStatus('Normal');
             resetUpdateFields();
+            await loadClasses();
         } catch (e) {
             Alert.alert('Could not save', e instanceof Error ? e.message : 'Please try again.');
         } finally {
@@ -373,6 +445,50 @@ export default function ManageTimetableScreen() {
                             )}
                         </TouchableOpacity>
                     </View>
+
+                    <View style={styles.listSection}>
+                        <Text style={styles.sectionTitle}>Existing classes</Text>
+                        <Text style={styles.helperText}>Cancel a class to alert students, or remove it entirely.</Text>
+
+                        {isLoadingList ? (
+                            <ActivityIndicator color={AppColors.primary} style={styles.listLoader} />
+                        ) : existingClasses.length === 0 ? (
+                            <Text style={styles.emptyListText}>No classes added yet.</Text>
+                        ) : (
+                            existingClasses.map((c) => {
+                                const cancelled = c.status === 'cancelled';
+                                return (
+                                    <View key={c.id} style={styles.classRow}>
+                                        <View style={styles.classRowHeader}>
+                                            <Text style={styles.classRowCode}>{c.courseCode}</Text>
+                                            <Text style={[styles.classRowStatus, cancelled && styles.classRowStatusCancelled]}>
+                                                {statusLabel(c.status)}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.classRowTitle}>{c.courseTitle}</Text>
+                                        <Text style={styles.classRowMeta}>
+                                            {c.dayOfWeek} · {c.startTime} - {c.endTime} · {c.venue}
+                                        </Text>
+
+                                        <View style={styles.classRowActions}>
+                                            {cancelled ? (
+                                                <TouchableOpacity style={styles.restoreButton} onPress={() => setClassStatus(c.id, 'active')}>
+                                                    <Text style={styles.restoreButtonText}>Restore</Text>
+                                                </TouchableOpacity>
+                                            ) : (
+                                                <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancelClass(c)}>
+                                                    <Text style={styles.cancelButtonText}>Cancel class</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                            <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteClass(c)}>
+                                                <Text style={styles.deleteButtonText}>Delete</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        )}
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -582,5 +698,101 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 20,
+    },
+    listSection: {
+        marginTop: 18,
+    },
+    listLoader: {
+        marginTop: 12,
+    },
+    emptyListText: {
+        fontSize: 14,
+        color: AppColors.mutedText,
+        marginTop: 8,
+    },
+    classRow: {
+        backgroundColor: AppColors.card,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        marginBottom: 12,
+    },
+    classRowHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+        gap: 10,
+    },
+    classRowCode: {
+        fontSize: 13,
+        fontWeight: '900',
+        color: AppColors.primary,
+    },
+    classRowStatus: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: AppColors.mutedText,
+    },
+    classRowStatusCancelled: {
+        color: AppColors.danger,
+    },
+    classRowTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: AppColors.text,
+        marginBottom: 4,
+    },
+    classRowMeta: {
+        fontSize: 13,
+        color: AppColors.mutedText,
+        marginBottom: 12,
+    },
+    classRowActions: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    cancelButton: {
+        flex: 1,
+        height: 42,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: AppColors.warning,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cancelButtonText: {
+        color: AppColors.warning,
+        fontWeight: '800',
+        fontSize: 14,
+    },
+    restoreButton: {
+        flex: 1,
+        height: 42,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: AppColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    restoreButtonText: {
+        color: AppColors.primary,
+        fontWeight: '800',
+        fontSize: 14,
+    },
+    deleteButton: {
+        flex: 1,
+        height: 42,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: AppColors.danger,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    deleteButtonText: {
+        color: AppColors.danger,
+        fontWeight: '800',
+        fontSize: 14,
     },
 });

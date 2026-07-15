@@ -3,6 +3,7 @@ import { NavigateButton } from '@/components/navigate-button';
 import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
+import { notifyCancelledClasses } from '@/services/notifications';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -78,6 +79,12 @@ export default function TimetableScreen() {
             );
             setRecords(data);
             setIsOffline(fromCache);
+            // Alert the student about any class newly marked cancelled.
+            await notifyCancelledClasses(
+                data
+                    .filter((r) => r.status === 'cancelled')
+                    .map((r) => ({ id: r.id, courseCode: r.courseCode, dayOfWeek: r.dayOfWeek }))
+            );
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Unable to load the timetable.');
         } finally {
