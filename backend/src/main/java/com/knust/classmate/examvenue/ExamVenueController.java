@@ -1,5 +1,6 @@
 package com.knust.classmate.examvenue;
 
+import com.knust.classmate.audit.AuditService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,10 +14,12 @@ import java.util.List;
 public class ExamVenueController {
 
     private final ExamVenueRepository examVenueRepository;
+    private final AuditService auditService;
 
     @Autowired
-    public ExamVenueController(ExamVenueRepository examVenueRepository) {
+    public ExamVenueController(ExamVenueRepository examVenueRepository, AuditService auditService) {
         this.examVenueRepository = examVenueRepository;
+        this.auditService = auditService;
     }
 
     @GetMapping
@@ -49,6 +52,9 @@ public class ExamVenueController {
             .status(request.status() != null ? request.status() : "pending")
             .build();
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(examVenueRepository.save(venue));
+        ExamVenue saved = examVenueRepository.save(venue);
+        auditService.log("EXAM_VENUE_ADDED",
+            request.courseCode() + " (" + request.startIndex() + "–" + request.endIndex() + ")");
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 }

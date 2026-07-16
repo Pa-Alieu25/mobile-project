@@ -1,5 +1,6 @@
 package com.knust.classmate.score;
 
+import com.knust.classmate.audit.AuditService;
 import com.knust.classmate.exception.ApiException;
 import com.knust.classmate.notification.PushService;
 import com.knust.classmate.user.User;
@@ -20,13 +21,15 @@ public class MidsemScoreController {
     private final MidsemScoreRepository scoreRepository;
     private final UserRepository userRepository;
     private final PushService pushService;
+    private final AuditService auditService;
 
     @Autowired
     public MidsemScoreController(MidsemScoreRepository scoreRepository, UserRepository userRepository,
-                                 PushService pushService) {
+                                 PushService pushService, AuditService auditService) {
         this.scoreRepository = scoreRepository;
         this.userRepository = userRepository;
         this.pushService = pushService;
+        this.auditService = auditService;
     }
 
     // A student sees only their own scores, matched by their index number.
@@ -62,6 +65,9 @@ public class MidsemScoreController {
         userRepository.findByIdentifier(request.indexNumber().trim()).ifPresent(student ->
             pushService.notifyUser(student.getId(), "Midsem score available",
                 "Your " + request.courseCode() + " midsem score has been posted.", "/my-scores"));
+
+        auditService.log("SCORE_UPLOADED",
+            request.courseCode() + " for index " + request.indexNumber().toUpperCase());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }

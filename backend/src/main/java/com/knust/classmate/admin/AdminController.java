@@ -1,5 +1,6 @@
 package com.knust.classmate.admin;
 
+import com.knust.classmate.audit.AuditService;
 import com.knust.classmate.auth.UserResponse;
 import com.knust.classmate.exception.ApiException;
 import com.knust.classmate.user.User;
@@ -18,10 +19,12 @@ import java.util.List;
 public class AdminController {
 
     private final UserRepository userRepository;
+    private final AuditService auditService;
 
     @Autowired
-    public AdminController(UserRepository userRepository) {
+    public AdminController(UserRepository userRepository, AuditService auditService) {
         this.userRepository = userRepository;
+        this.auditService = auditService;
     }
 
     // Current course reps, so the admin can see and manage them.
@@ -48,7 +51,9 @@ public class AdminController {
 
         user.setRole(UserRole.COURSE_REP);
         user.setStatus("ACTIVE");
-        return ResponseEntity.ok(UserResponse.from(userRepository.save(user)));
+        User saved = userRepository.save(user);
+        auditService.log("REP_PROMOTED", saved.getFullName() + " (" + saved.getIndexNumber() + ")");
+        return ResponseEntity.ok(UserResponse.from(saved));
     }
 
     // Demote a course rep back to a normal student.
@@ -57,6 +62,8 @@ public class AdminController {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found."));
         user.setRole(UserRole.STUDENT);
-        return ResponseEntity.ok(UserResponse.from(userRepository.save(user)));
+        User saved = userRepository.save(user);
+        auditService.log("REP_REMOVED", saved.getFullName() + " (" + saved.getIndexNumber() + ")");
+        return ResponseEntity.ok(UserResponse.from(saved));
     }
 }

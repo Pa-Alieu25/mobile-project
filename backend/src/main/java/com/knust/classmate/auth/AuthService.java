@@ -1,5 +1,6 @@
 package com.knust.classmate.auth;
 
+import com.knust.classmate.audit.AuditService;
 import com.knust.classmate.config.JwtUtil;
 import com.knust.classmate.exception.ApiException;
 import com.knust.classmate.user.User;
@@ -26,6 +27,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
     private final LoginAttemptService loginAttemptService;
+    private final AuditService auditService;
 
     @Autowired
     public AuthService(UserRepository userRepository,
@@ -33,13 +35,15 @@ public class AuthService {
                        JwtUtil jwtUtil,
                        AuthenticationManager authenticationManager,
                        UserDetailsService userDetailsService,
-                       LoginAttemptService loginAttemptService) {
+                       LoginAttemptService loginAttemptService,
+                       AuditService auditService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
         this.loginAttemptService = loginAttemptService;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -66,7 +70,9 @@ public class AuthService {
             .status("ACTIVE")
             .build();
 
-        return UserResponse.from(userRepository.save(user));
+        User saved = userRepository.save(user);
+        auditService.log("REGISTER", "New account: " + saved.getEmail(), saved.getFullName(), "STUDENT");
+        return UserResponse.from(saved);
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -103,6 +109,7 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);
 
+        auditService.log("LOGIN", "Signed in", user.getFullName(), user.getRole().name());
         return new LoginResponse(token, UserResponse.from(user));
     }
 }

@@ -125,6 +125,7 @@ export default function AdminPanel() {
         { title: 'Add Assignment', text: 'Record assignment details and due dates.', route: '/add-assignment' },
         { title: 'Upload Exam Venue Info', text: 'Add exam venue ranges for students.', route: '/manage-exam-venues' },
         { title: 'Upload Midsem Score', text: 'Post a student’s midsem score by index number.', route: '/upload-score' },
+        { title: 'Activity log', text: 'See who did what and when across the app.', route: '/audit-log' },
     ];
 
     return (

@@ -1,5 +1,6 @@
 package com.knust.classmate.assignment;
 
+import com.knust.classmate.audit.AuditService;
 import com.knust.classmate.user.User;
 import com.knust.classmate.user.UserRepository;
 import jakarta.validation.Valid;
@@ -17,12 +18,15 @@ public class AssignmentController {
 
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
+    private final AuditService auditService;
 
     @Autowired
     public AssignmentController(AssignmentRepository assignmentRepository,
-                                 UserRepository userRepository) {
+                                 UserRepository userRepository,
+                                 AuditService auditService) {
         this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
+        this.auditService = auditService;
     }
 
     @GetMapping
@@ -46,7 +50,8 @@ public class AssignmentController {
             .postedBy(user.getFullName())
             .build();
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(assignmentRepository.save(assignment));
+        Assignment saved = assignmentRepository.save(assignment);
+        auditService.log("ASSIGNMENT_POSTED", request.courseCode() + ": " + request.title());
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 }
