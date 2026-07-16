@@ -1,17 +1,23 @@
 export const AppColors = {
-    primary: '#006B3F',
-    primaryDark: '#004D2E',
-    accent: '#F2C94C',
+    primary: '#046A38',      // KNUST green
+    primaryDark: '#07502D',  // deep green
+    accent: '#E8A317',       // warm gold
 
-    background: '#F8FAF7',
+    background: '#F4F5F2',   // soft grey-white
     card: '#FFFFFF',
 
     text: '#1F2933',
     mutedText: '#6B7280',
 
-    border: '#E5E7EB',
+    border: '#E4E7E2',
 
-    danger: '#DC2626',
-    warning: '#F59E0B',
-    success: '#16A34A',
+    danger: '#B3261E',
+    warning: '#E8A317',
+    success: '#046A38',
+
+    // Status colours (timetable class states)
+    statusActive: '#046A38',
+    statusCancelled: '#B3261E',
+    statusVenueChanged: '#E8A317',
+    statusTimeChanged: '#2563EB',
 };
