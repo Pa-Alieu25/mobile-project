@@ -75,6 +75,7 @@ function RootNavigator() {
       {/* Admin only */}
       <Stack.Protected guard={isAuthenticated && role === 'admin'}>
         <Stack.Screen name="admin-panel" />
+        <Stack.Screen name="audit-log" />
       </Stack.Protected>
     </Stack>
   );

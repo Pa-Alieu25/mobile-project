@@ -1,5 +1,6 @@
 package com.knust.classmate.timetable;
 
+import com.knust.classmate.audit.AuditService;
 import com.knust.classmate.exception.ApiException;
 import com.knust.classmate.notification.PushService;
 import jakarta.validation.Valid;
@@ -16,11 +17,14 @@ public class TimetableController {
 
     private final TimetableRepository timetableRepository;
     private final PushService pushService;
+    private final AuditService auditService;
 
     @Autowired
-    public TimetableController(TimetableRepository timetableRepository, PushService pushService) {
+    public TimetableController(TimetableRepository timetableRepository, PushService pushService,
+                               AuditService auditService) {
         this.timetableRepository = timetableRepository;
         this.pushService = pushService;
+        this.auditService = auditService;
     }
 
     @GetMapping
@@ -45,7 +49,9 @@ public class TimetableController {
             .classGroup(request.classGroup())
             .status(request.status() != null ? request.status() : "active")
             .build();
-        return ResponseEntity.status(HttpStatus.CREATED).body(timetableRepository.save(record));
+        TimetableRecord saved = timetableRepository.save(record);
+        auditService.log("CLASS_ADDED", saved.getCourseCode() + " on " + saved.getDayOfWeek());
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     // Update a class's status (e.g. mark it cancelled or restore it to active).
@@ -62,15 +68,17 @@ public class TimetableController {
                 saved.getCourseCode() + " on " + saved.getDayOfWeek() + " has been cancelled.", "/timetable");
         }
 
+        auditService.log("CLASS_STATUS_CHANGED",
+            saved.getCourseCode() + " on " + saved.getDayOfWeek() + " → " + saved.getStatus());
         return ResponseEntity.ok(saved);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (!timetableRepository.existsById(id)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "Class not found.");
-        }
+        TimetableRecord record = timetableRepository.findById(id)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Class not found."));
         timetableRepository.deleteById(id);
+        auditService.log("CLASS_DELETED", record.getCourseCode() + " on " + record.getDayOfWeek());
         return ResponseEntity.noContent().build();
     }
 }
