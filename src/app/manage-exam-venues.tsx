@@ -1,6 +1,9 @@
 import { AppColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
+import { parseCsv } from '@/services/csv';
+import * as DocumentPicker from 'expo-document-picker';
+import { File as FsFile } from 'expo-file-system';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -32,6 +35,58 @@ export default function ManageExamVenuesScreen() {
     const [endNumber, setEndNumber] = useState('');
     const [status, setStatus] = useState<ExamVenueStatus>('confirmed');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleUploadCsv = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: ['text/csv', 'text/comma-separated-values', 'application/vnd.ms-excel', 'text/plain'],
+                copyToCacheDirectory: true,
+            });
+            if (result.canceled) return;
+
+            const uri = result.assets[0].uri;
+            const text = Platform.OS === 'web'
+                ? await (await fetch(uri)).text()
+                : await new FsFile(uri).text();
+
+            const rows = parseCsv(text);
+            if (rows.length === 0) {
+                Alert.alert('Empty or invalid file', 'The CSV needs a header row and at least one row of data.');
+                return;
+            }
+
+            const venues = rows.map((r) => ({
+                courseCode: r.courseCode ?? r.coursecode ?? '',
+                courseTitle: r.courseTitle ?? r.coursetitle ?? '',
+                examDate: r.examDate ?? r.examdate ?? '',
+                examTime: r.examTime ?? r.examtime ?? '',
+                venue: r.venue ?? '',
+                buildingOrBlock: r.buildingOrBlock ?? r.building ?? '',
+                roomOrHall: r.roomOrHall ?? r.room ?? '',
+                startIndex: Number(r.startIndex ?? r.startindex ?? r.start),
+                endIndex: Number(r.endIndex ?? r.endindex ?? r.end),
+                status: r.status || 'confirmed',
+            }));
+
+            setIsUploading(true);
+            const res = await apiRequest<{ received: number; added: number }>('/exam-venues/bulk', {
+                method: 'POST',
+                token,
+                body: venues,
+            });
+            Alert.alert(
+                'Upload complete',
+                `${res.added} of ${res.received} rows added.` +
+                    (res.added < res.received ? ' Rows with missing or invalid fields were skipped.' : ''),
+                [{ text: 'Done', onPress: () => router.back() }]
+            );
+        } catch (e) {
+            Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not read or upload the file.');
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const handleSaveVenueRange = async () => {
         const cleanedCourseCode = courseCode.trim();
@@ -137,8 +192,29 @@ export default function ManageExamVenuesScreen() {
                         reference number.
                     </Text>
 
+                    <View style={styles.uploadCard}>
+                        <Text style={styles.sectionTitle}>Bulk upload (CSV)</Text>
+                        <Text style={styles.helperText}>
+                            Upload many venues at once. First row must be the header:
+                        </Text>
+                        <Text style={styles.codeText}>
+                            courseCode, courseTitle, examDate, examTime, venue, buildingOrBlock, roomOrHall, startIndex, endIndex, status
+                        </Text>
+                        <TouchableOpacity
+                            style={[styles.uploadButton, isUploading && styles.disabledButton]}
+                            onPress={handleUploadCsv}
+                            disabled={isUploading}
+                        >
+                            {isUploading ? (
+                                <ActivityIndicator color={AppColors.card} />
+                            ) : (
+                                <Text style={styles.uploadButtonText}>Choose CSV file</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
                     <View style={styles.formCard}>
-                        <Text style={styles.sectionTitle}>Exam Details</Text>
+                        <Text style={styles.sectionTitle}>Or add one manually</Text>
 
                         <Text style={styles.label}>Course Code</Text>
                         <TextInput
@@ -342,6 +418,35 @@ const styles = StyleSheet.create({
         padding: 18,
         borderWidth: 1,
         borderColor: AppColors.border,
+    },
+    uploadCard: {
+        backgroundColor: AppColors.card,
+        borderRadius: 18,
+        padding: 18,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        marginBottom: 16,
+    },
+    codeText: {
+        fontSize: 12,
+        color: AppColors.text,
+        backgroundColor: AppColors.background,
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 14,
+        lineHeight: 18,
+    },
+    uploadButton: {
+        height: 50,
+        borderRadius: 12,
+        backgroundColor: AppColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    uploadButtonText: {
+        color: AppColors.card,
+        fontSize: 15,
+        fontWeight: '800',
     },
     sectionTitle: {
         fontSize: 18,
