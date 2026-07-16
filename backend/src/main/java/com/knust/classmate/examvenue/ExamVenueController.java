@@ -7,7 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/exam-venues")
@@ -56,5 +58,40 @@ public class ExamVenueController {
         auditService.log("EXAM_VENUE_ADDED",
             request.courseCode() + " (" + request.startIndex() + "–" + request.endIndex() + ")");
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    // Bulk upload from a parsed CSV. Rows missing required fields are skipped;
+    // the response reports how many were received vs. actually saved.
+    @PostMapping("/bulk")
+    public ResponseEntity<Map<String, Object>> createBulk(@RequestBody List<ExamVenueRequest> requests) {
+        List<ExamVenue> venues = new ArrayList<>();
+        for (ExamVenueRequest r : requests) {
+            if (isBlank(r.courseCode()) || isBlank(r.courseTitle()) || isBlank(r.examDate())
+                || isBlank(r.examTime()) || isBlank(r.venue()) || isBlank(r.buildingOrBlock())
+                || r.startIndex() == null || r.endIndex() == null) {
+                continue;
+            }
+            venues.add(ExamVenue.builder()
+                .courseCode(r.courseCode())
+                .courseTitle(r.courseTitle())
+                .examDate(r.examDate())
+                .examTime(r.examTime())
+                .venue(r.venue())
+                .buildingOrBlock(r.buildingOrBlock())
+                .roomOrHall(r.roomOrHall())
+                .startIndex(r.startIndex())
+                .endIndex(r.endIndex())
+                .status(r.status() != null ? r.status() : "pending")
+                .build());
+        }
+
+        examVenueRepository.saveAll(venues);
+        auditService.log("EXAM_VENUE_BULK", venues.size() + " exam venues uploaded via CSV");
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(Map.of("received", requests.size(), "added", venues.size()));
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
