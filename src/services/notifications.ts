@@ -1,5 +1,7 @@
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { apiRequest } from './api';
 import { getItem, setItem } from './storage';
 
 // Local (on-device) reminders. This works in Expo Go — remote push would need
@@ -98,6 +100,29 @@ export async function syncClassReminders(
 
 export async function cancelAllReminders(): Promise<void> {
     await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+// Registers this device's Expo push token with the backend so it can receive
+// remote push (announcements, cancellations, score releases). This is a no-op
+// in Expo Go / without a development build, where getExpoPushTokenAsync is not
+// available — it fails quietly and the app keeps working.
+export async function registerForPushNotifications(authToken: string | null): Promise<void> {
+    try {
+        const granted = await ensureNotificationPermissions();
+        if (!granted) return;
+
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        if (!projectId) return;
+
+        const { data: expoPushToken } = await Notifications.getExpoPushTokenAsync({ projectId });
+        await apiRequest('/notifications/register-token', {
+            method: 'POST',
+            token: authToken,
+            body: { token: expoPushToken },
+        });
+    } catch {
+        // Expected in Expo Go or before the dev build / FCM is set up — ignore.
+    }
 }
 
 // True only when the user has enabled class reminders AND granted permission.

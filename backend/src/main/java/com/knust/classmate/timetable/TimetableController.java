@@ -1,6 +1,7 @@
 package com.knust.classmate.timetable;
 
 import com.knust.classmate.exception.ApiException;
+import com.knust.classmate.notification.PushService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,10 +15,12 @@ import java.util.List;
 public class TimetableController {
 
     private final TimetableRepository timetableRepository;
+    private final PushService pushService;
 
     @Autowired
-    public TimetableController(TimetableRepository timetableRepository) {
+    public TimetableController(TimetableRepository timetableRepository, PushService pushService) {
         this.timetableRepository = timetableRepository;
+        this.pushService = pushService;
     }
 
     @GetMapping
@@ -52,7 +55,14 @@ public class TimetableController {
         TimetableRecord record = timetableRepository.findById(id)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Class not found."));
         record.setStatus(request.status());
-        return ResponseEntity.ok(timetableRepository.save(record));
+        TimetableRecord saved = timetableRepository.save(record);
+
+        if ("cancelled".equalsIgnoreCase(request.status())) {
+            pushService.notifyAll("Class cancelled",
+                saved.getCourseCode() + " on " + saved.getDayOfWeek() + " has been cancelled.");
+        }
+
+        return ResponseEntity.ok(saved);
     }
 
     @DeleteMapping("/{id}")
