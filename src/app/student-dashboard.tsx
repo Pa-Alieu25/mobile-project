@@ -2,7 +2,7 @@ import { AppColors } from '@/constants/colors';
 import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
-import { classRemindersActive, syncClassReminders } from '@/services/notifications';
+import { syncReminders } from '@/services/notifications';
 import { getItem } from '@/services/storage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -146,16 +146,12 @@ export default function StudentDashboard() {
         [assignments, completedIds]
     );
 
-    // Once today's classes are known, (re)schedule local reminders — but only if
-    // the student already enabled them, so we never prompt from the dashboard.
+    // Once the timetable loads, (re)schedule local reminders and the night-before
+    // summary. syncReminders honours the user's toggles and never prompts here.
     useEffect(() => {
         if (isLoading) return;
-        (async () => {
-            if (await classRemindersActive()) {
-                await syncClassReminders(todaysClasses);
-            }
-        })();
-    }, [isLoading, todaysClasses]);
+        syncReminders(timetable);
+    }, [isLoading, timetable]);
 
     const latestAnnouncement = announcements[0] ?? null;
 

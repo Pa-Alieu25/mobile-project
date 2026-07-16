@@ -34,26 +34,28 @@ public class PushService {
     }
 
     /** Notify every registered device (students, reps, admins). */
-    public void notifyAll(String title, String body) {
+    public void notifyAll(String title, String body, String screen) {
         List<String> tokens = deviceTokenRepository.findAll().stream()
             .map(DeviceToken::getExpoPushToken)
             .toList();
-        send(tokens, title, body);
+        send(tokens, title, body, screen);
     }
 
     /** Notify only the devices belonging to a specific user. */
-    public void notifyUser(Long userId, String title, String body) {
+    public void notifyUser(Long userId, String title, String body, String screen) {
         List<String> tokens = deviceTokenRepository.findByUserId(userId).stream()
             .map(DeviceToken::getExpoPushToken)
             .toList();
-        send(tokens, title, body);
+        send(tokens, title, body, screen);
     }
 
-    private void send(List<String> tokens, String title, String body) {
+    // `screen` is the in-app route the notification deep-links to when tapped.
+    private void send(List<String> tokens, String title, String body, String screen) {
         if (tokens.isEmpty()) return;
         try {
-            List<Map<String, String>> messages = tokens.stream()
-                .map(t -> Map.of("to", t, "title", title, "body", body))
+            List<Map<String, Object>> messages = tokens.stream()
+                .map(t -> Map.<String, Object>of(
+                    "to", t, "title", title, "body", body, "data", Map.of("url", screen)))
                 .toList();
             String json = objectMapper.writeValueAsString(messages);
 
