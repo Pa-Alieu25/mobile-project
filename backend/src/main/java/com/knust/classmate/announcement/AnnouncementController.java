@@ -1,5 +1,6 @@
 package com.knust.classmate.announcement;
 
+import com.knust.classmate.notification.PushService;
 import com.knust.classmate.user.User;
 import com.knust.classmate.user.UserRepository;
 import jakarta.validation.Valid;
@@ -17,12 +18,15 @@ public class AnnouncementController {
 
     private final AnnouncementRepository announcementRepository;
     private final UserRepository userRepository;
+    private final PushService pushService;
 
     @Autowired
     public AnnouncementController(AnnouncementRepository announcementRepository,
-                                   UserRepository userRepository) {
+                                   UserRepository userRepository,
+                                   PushService pushService) {
         this.announcementRepository = announcementRepository;
         this.userRepository = userRepository;
+        this.pushService = pushService;
     }
 
     @GetMapping
@@ -53,7 +57,9 @@ public class AnnouncementController {
             .postedByUserId(user.getId())
             .build();
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(AnnouncementResponse.from(announcementRepository.save(announcement)));
+        Announcement saved = announcementRepository.save(announcement);
+        pushService.notifyAll(request.category() + " announcement", request.title());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(AnnouncementResponse.from(saved));
     }
 }
