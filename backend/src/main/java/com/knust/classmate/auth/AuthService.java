@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,18 +25,21 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
+    private final LoginAttemptService loginAttemptService;
 
     @Autowired
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil,
                        AuthenticationManager authenticationManager,
-                       UserDetailsService userDetailsService) {
+                       UserDetailsService userDetailsService,
+                       LoginAttemptService loginAttemptService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @Transactional
@@ -66,17 +70,35 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByIdentifier(request.identifier())
-            .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        String identifier = request.identifier();
+
+        // Block brute-force: too many recent failures for this identifier are refused.
+        if (loginAttemptService.isBlocked(identifier)) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                "Too many failed login attempts. Please wait a few minutes and try again.");
+        }
+
+        User user = userRepository.findByIdentifier(identifier).orElse(null);
+        if (user == null) {
+            loginAttemptService.recordFailure(identifier);
+            throw new BadCredentialsException("Invalid credentials");
+        }
 
         // Verify the password first so account status cannot be probed without valid credentials.
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(user.getEmail(), request.password()));
+        try {
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(user.getEmail(), request.password()));
+        } catch (AuthenticationException ex) {
+            loginAttemptService.recordFailure(identifier);
+            throw ex;
+        }
 
         if ("PENDING".equals(user.getStatus()))
             throw new ApiException(HttpStatus.FORBIDDEN, "Your course rep request is pending admin approval.");
         if ("REJECTED".equals(user.getStatus()))
             throw new ApiException(HttpStatus.FORBIDDEN, "Your course rep request was rejected. Contact admin.");
+
+        loginAttemptService.reset(identifier);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);
