@@ -1,14 +1,18 @@
 import { AppColors } from '@/constants/colors';
 import { OfflineBanner } from '@/components/offline-banner';
+import { StatusPill } from '@/components/ui/status-pill';
+import { cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { syncReminders } from '@/services/notifications';
 import { getItem } from '@/services/storage';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Linking,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -18,6 +22,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
 type TimetableRecord = {
     id: number;
     courseCode: string;
@@ -26,6 +32,7 @@ type TimetableRecord = {
     startTime: string;
     endTime: string;
     venue: string;
+    lecturer: string;
     status: string;
 };
 
@@ -46,7 +53,6 @@ type Announcement = {
 
 const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// Converts a "8:00 AM" / "2:30 PM" style string to minutes since midnight.
 function parseTimeToMinutes(time: string): number | null {
     const match = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
     if (!match) return null;
@@ -60,13 +66,11 @@ function parseTimeToMinutes(time: string): number | null {
 
 type ExamCountdown = { days: number; courseCode: string; examDate: string };
 
-// Best-effort parse of a free-text exam date; null if it can't be understood.
 function parseExamDate(value: string): Date | null {
     const t = Date.parse(value);
     return Number.isNaN(t) ? null : new Date(t);
 }
 
-// Whole days from today to the given date (0 = today, negative = past).
 function daysUntil(date: Date): number {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -74,6 +78,24 @@ function daysUntil(date: Date): number {
     startOfDate.setHours(0, 0, 0, 0);
     return Math.round((startOfDate.getTime() - startOfToday.getTime()) / 86400000);
 }
+
+function initials(name: string): string {
+    return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || 'S';
+}
+
+function openInMaps(venue: string) {
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue} KNUST Kumasi`)}`;
+    Linking.openURL(url).catch(() => {});
+}
+
+const quickActions: { label: string; icon: IconName; route: string }[] = [
+    { label: 'Timetable', icon: 'calendar-outline', route: '/timetable' },
+    { label: 'Assignments', icon: 'document-text-outline', route: '/assignments' },
+    { label: 'Exam search', icon: 'search-outline', route: '/exam-venue-search' },
+    { label: 'Midsem scores', icon: 'ribbon-outline', route: '/my-scores' },
+    { label: 'Announcements', icon: 'megaphone-outline', route: '/announcements' },
+    { label: 'Profile', icon: 'person-outline', route: '/profile-settings' },
+];
 
 export default function StudentDashboard() {
     const { signOut, token } = useAuth();
@@ -112,7 +134,6 @@ export default function StudentDashboard() {
     }, []);
 
     const loadDashboard = useCallback(async () => {
-        // One request failing should not blank out the others.
         const [tt, asg, ann] = await Promise.allSettled([
             fetchWithCache<TimetableRecord[]>(CacheKeys.timetable, '/timetable', token),
             fetchWithCache<Assignment[]>(CacheKeys.assignments, '/assignments', token),
@@ -131,7 +152,6 @@ export default function StudentDashboard() {
         loadDashboard();
     }, [loadDashboard]);
 
-    // Surface a countdown when the student has an exam within the next 14 days.
     useEffect(() => {
         (async () => {
             const index = await getItem('indexNumber');
@@ -188,14 +208,13 @@ export default function StudentDashboard() {
         [assignments, completedIds]
     );
 
-    // Once the timetable loads, (re)schedule local reminders and the night-before
-    // summary. syncReminders honours the user's toggles and never prompts here.
     useEffect(() => {
         if (isLoading) return;
         syncReminders(timetable);
     }, [isLoading, timetable]);
 
     const latestAnnouncement = announcements[0] ?? null;
+    const profileLine = [programme, level ? `Level ${level}` : ''].filter(Boolean).join(' · ');
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -207,32 +226,37 @@ export default function StudentDashboard() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
+                {/* Header */}
                 <View style={styles.header}>
+                    <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>{initials(studentName)}</Text>
+                    </View>
                     <View style={styles.headerText}>
-                        <Text style={styles.greeting}>Hello, {studentName}</Text>
-                        <Text style={styles.subGreeting}>
-                            {todayName}
-                            {programme ? ` · ${programme}${level ? ` · Level ${level}` : ''}` : ''}
+                        <Text style={styles.greeting} numberOfLines={1}>Hello, {studentName}</Text>
+                        <Text style={styles.subGreeting} numberOfLines={1}>
+                            {todayName}{profileLine ? ` · ${profileLine}` : ''}
                         </Text>
                     </View>
-
+                    <TouchableOpacity style={styles.bellButton} onPress={() => router.push('/announcements')}>
+                        <Ionicons name="notifications-outline" size={22} color={AppColors.text} />
+                        {latestAnnouncement && <View style={styles.bellDot} />}
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                        <Text style={styles.signOutText}>Sign out</Text>
+                        <Ionicons name="log-out-outline" size={20} color={AppColors.primary} />
                     </TouchableOpacity>
                 </View>
 
                 {isOffline && <OfflineBanner />}
 
                 {examCountdown && (
-                    <TouchableOpacity style={styles.examBanner} onPress={() => router.push('/exam-venue-search')}>
-                        <Text style={styles.examBannerLabel}>Exam countdown</Text>
-                        <Text style={styles.examBannerText}>
+                    <TouchableOpacity style={styles.examStrip} onPress={() => router.push('/exam-venue-search')}>
+                        <Ionicons name="alarm-outline" size={18} color={AppColors.text} />
+                        <Text style={styles.examStripText}>
                             {examCountdown.days === 0
                                 ? `${examCountdown.courseCode} exam is today`
                                 : `${examCountdown.courseCode} exam in ${examCountdown.days} day${examCountdown.days === 1 ? '' : 's'}`}
-                            {' · '}
-                            {examCountdown.examDate}
                         </Text>
+                        <Ionicons name="chevron-forward" size={16} color={AppColors.text} />
                     </TouchableOpacity>
                 )}
 
@@ -242,26 +266,42 @@ export default function StudentDashboard() {
                     </View>
                 ) : (
                     <>
-                        {/* Next class — the single most useful thing */}
-                        <View style={styles.nextClassCard}>
-                            <Text style={styles.nextClassLabel}>Next class</Text>
+                        {/* Next class hero */}
+                        <View style={[styles.hero, cardShadow]}>
+                            <View style={styles.heroLabelRow}>
+                                <Ionicons name="school-outline" size={16} color={AppColors.accent} />
+                                <Text style={styles.heroLabel}>Next class</Text>
+                            </View>
                             {nextClass ? (
                                 <>
-                                    <Text style={styles.nextClassTitle}>{nextClass.courseTitle}</Text>
-                                    <Text style={styles.nextClassMeta}>
-                                        {nextClass.startTime} – {nextClass.endTime} · {nextClass.venue}
-                                    </Text>
+                                    <Text style={styles.heroTitle}>{nextClass.courseTitle}</Text>
+                                    <View style={styles.heroMetaRow}>
+                                        <Ionicons name="time-outline" size={15} color="#DDEFE4" />
+                                        <Text style={styles.heroMeta}>{nextClass.startTime} – {nextClass.endTime}</Text>
+                                    </View>
+                                    {!!nextClass.lecturer && (
+                                        <View style={styles.heroMetaRow}>
+                                            <Ionicons name="person-outline" size={15} color="#DDEFE4" />
+                                            <Text style={styles.heroMeta}>{nextClass.lecturer}</Text>
+                                        </View>
+                                    )}
+                                    <View style={styles.heroMetaRow}>
+                                        <Ionicons name="location-outline" size={15} color="#DDEFE4" />
+                                        <Text style={styles.heroMeta}>{nextClass.venue}</Text>
+                                    </View>
+                                    <TouchableOpacity style={styles.navigateBtn} onPress={() => openInMaps(nextClass.venue)}>
+                                        <Ionicons name="navigate" size={16} color={AppColors.primaryDark} />
+                                        <Text style={styles.navigateBtnText}>Navigate</Text>
+                                    </TouchableOpacity>
                                 </>
                             ) : (
-                                <Text style={styles.nextClassEmpty}>
-                                    {todaysClasses.length === 0
-                                        ? 'Nothing scheduled today.'
-                                        : "That's all your classes for today."}
+                                <Text style={styles.heroEmpty}>
+                                    {todaysClasses.length === 0 ? 'Nothing scheduled today.' : "That's all your classes for today."}
                                 </Text>
                             )}
                         </View>
 
-                        {/* Today's schedule as real content */}
+                        {/* Today's schedule */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <Text style={styles.sectionTitle}>Today&apos;s schedule</Text>
@@ -269,18 +309,24 @@ export default function StudentDashboard() {
                                     <Text style={styles.sectionLink}>Timetable</Text>
                                 </TouchableOpacity>
                             </View>
-
                             {todaysClasses.length === 0 ? (
                                 <Text style={styles.emptyLine}>No classes scheduled for today.</Text>
                             ) : (
                                 todaysClasses.map((c) => (
-                                    <View key={c.id} style={styles.rowCard}>
-                                        <View style={styles.timePill}>
-                                            <Text style={styles.timePillText}>{c.startTime}</Text>
+                                    <View key={c.id} style={styles.railRow}>
+                                        <View style={styles.railTime}>
+                                            <Text style={styles.railTimeText}>{c.startTime}</Text>
                                         </View>
-                                        <View style={styles.rowBody}>
-                                            <Text style={styles.rowTitle}>{c.courseTitle}</Text>
-                                            <Text style={styles.rowMeta}>{c.courseCode} · {c.venue}</Text>
+                                        <View style={[styles.railCard, cardShadow]}>
+                                            <View style={styles.railCardTop}>
+                                                <Text style={styles.railCourse}>{c.courseCode}</Text>
+                                                <StatusPill status={c.status} />
+                                            </View>
+                                            <Text style={styles.railTitle}>{c.courseTitle}</Text>
+                                            <View style={styles.railMetaRow}>
+                                                <Ionicons name="location-outline" size={13} color={AppColors.mutedText} />
+                                                <Text style={styles.railMeta}>{c.venue}</Text>
+                                            </View>
                                         </View>
                                     </View>
                                 ))
@@ -295,27 +341,23 @@ export default function StudentDashboard() {
                                     <Text style={styles.sectionLink}>All</Text>
                                 </TouchableOpacity>
                             </View>
-
                             {pendingAssignments.length === 0 ? (
                                 <Text style={styles.emptyLine}>You&apos;re all caught up.</Text>
                             ) : (
                                 <>
                                     {pendingAssignments.slice(0, 3).map((a) => (
-                                        <TouchableOpacity
-                                            key={a.id}
-                                            style={styles.rowCard}
-                                            onPress={() => router.push('/assignments')}
-                                        >
-                                            <View style={styles.rowBody}>
-                                                <Text style={styles.rowTitle}>{a.title}</Text>
-                                                <Text style={styles.rowMeta}>{a.courseCode} · due {a.dueDate}</Text>
+                                        <TouchableOpacity key={a.id} style={[styles.iconRow, cardShadow]} onPress={() => router.push('/assignments')}>
+                                            <View style={styles.iconBadgeGold}>
+                                                <Ionicons name="document-text-outline" size={18} color={AppColors.accent} />
+                                            </View>
+                                            <View style={styles.iconRowBody}>
+                                                <Text style={styles.iconRowTitle}>{a.title}</Text>
+                                                <Text style={styles.iconRowMeta}>{a.courseCode} · due {a.dueDate}</Text>
                                             </View>
                                         </TouchableOpacity>
                                     ))}
                                     {pendingAssignments.length > 3 && (
-                                        <Text style={styles.moreLine}>
-                                            +{pendingAssignments.length - 3} more
-                                        </Text>
+                                        <Text style={styles.moreLine}>+{pendingAssignments.length - 3} more</Text>
                                     )}
                                 </>
                             )}
@@ -329,234 +371,142 @@ export default function StudentDashboard() {
                                     <Text style={styles.sectionLink}>All</Text>
                                 </TouchableOpacity>
                             </View>
-
                             {latestAnnouncement ? (
-                                <TouchableOpacity style={styles.rowCard} onPress={() => router.push('/announcements')}>
-                                    <View style={styles.rowBody}>
-                                        <Text style={styles.rowTitle}>{latestAnnouncement.title}</Text>
-                                        <Text style={styles.rowMeta}>
-                                            {latestAnnouncement.category} · {latestAnnouncement.postedAt}
-                                        </Text>
+                                <TouchableOpacity style={[styles.iconRow, cardShadow]} onPress={() => router.push('/announcements')}>
+                                    <View style={styles.iconBadgeGreen}>
+                                        <Ionicons name="megaphone-outline" size={18} color={AppColors.primary} />
+                                    </View>
+                                    <View style={styles.iconRowBody}>
+                                        <Text style={styles.iconRowTitle}>{latestAnnouncement.title}</Text>
+                                        <Text style={styles.iconRowMeta}>{latestAnnouncement.category} · {latestAnnouncement.postedAt}</Text>
                                     </View>
                                 </TouchableOpacity>
                             ) : (
                                 <Text style={styles.emptyLine}>No announcements yet.</Text>
                             )}
                         </View>
+
+                        {/* Quick actions */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Quick actions</Text>
+                            <View style={styles.grid}>
+                                {quickActions.map((action) => (
+                                    <TouchableOpacity
+                                        key={action.route}
+                                        style={[styles.gridItem, cardShadow]}
+                                        onPress={() => router.push(action.route as never)}
+                                    >
+                                        <View style={styles.gridIcon}>
+                                            <Ionicons name={action.icon} size={22} color={AppColors.primary} />
+                                        </View>
+                                        <Text style={styles.gridLabel}>{action.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
                     </>
                 )}
-
-                {/* Quick actions */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Quick actions</Text>
-                    <View style={styles.actionList}>
-                        <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/exam-venue-search')}>
-                            <Text style={styles.actionTitle}>Exam venue search</Text>
-                            <Text style={styles.actionText}>Find your exam venue by index number.</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/my-scores' as any)}>
-                            <Text style={styles.actionTitle}>Midsem scores</Text>
-                            <Text style={styles.actionText}>View your released midsem scores.</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/profile-settings' as any)}>
-                            <Text style={styles.actionTitle}>Profile & settings</Text>
-                            <Text style={styles.actionText}>Reminders, subscription, and account.</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
             </ScrollView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: AppColors.background,
+    safeArea: { flex: 1, backgroundColor: AppColors.background },
+    container: { flex: 1, backgroundColor: AppColors.background },
+    content: { padding: 20, paddingBottom: 40 },
+
+    header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+    avatar: {
+        width: 46, height: 46, borderRadius: 23, backgroundColor: AppColors.primary,
+        justifyContent: 'center', alignItems: 'center',
     },
-    container: {
-        flex: 1,
-        backgroundColor: AppColors.background,
+    avatarText: { color: AppColors.card, fontWeight: '800', fontSize: 16 },
+    headerText: { flex: 1 },
+    greeting: { fontSize: 20, fontWeight: '800', color: AppColors.text },
+    subGreeting: { fontSize: 13, color: AppColors.mutedText, marginTop: 2 },
+    bellButton: {
+        width: 42, height: 42, borderRadius: 21, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center',
     },
-    content: {
-        padding: 20,
-        paddingBottom: 36,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 18,
-    },
-    headerText: {
-        flex: 1,
-        paddingRight: 12,
-    },
-    greeting: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: AppColors.text,
-    },
-    subGreeting: {
-        fontSize: 14,
-        color: AppColors.mutedText,
-        marginTop: 4,
+    bellDot: {
+        position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5,
+        backgroundColor: AppColors.accent, borderWidth: 1.5, borderColor: AppColors.card,
     },
     signOutButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: AppColors.card,
-        borderWidth: 1,
-        borderColor: AppColors.border,
+        width: 42, height: 42, borderRadius: 21, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center',
     },
-    signOutText: {
-        color: AppColors.primary,
-        fontWeight: '700',
-        fontSize: 13,
+
+    examStrip: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        backgroundColor: AppColors.accent, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
+        marginBottom: 18,
     },
-    loadingCard: {
-        paddingVertical: 60,
-        alignItems: 'center',
+    examStripText: { flex: 1, fontSize: 14, fontWeight: '800', color: AppColors.text },
+
+    loadingCard: { paddingVertical: 60, alignItems: 'center' },
+
+    hero: { backgroundColor: AppColors.primary, borderRadius: 18, padding: 20, marginBottom: 22 },
+    heroLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+    heroLabel: {
+        fontSize: 12, fontWeight: '800', color: AppColors.accent,
+        textTransform: 'uppercase', letterSpacing: 0.5,
     },
-    examBanner: {
-        backgroundColor: AppColors.accent,
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 16,
+    heroTitle: { fontSize: 21, fontWeight: '800', color: AppColors.card, marginBottom: 10 },
+    heroMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
+    heroMeta: { fontSize: 14, color: '#DDEFE4' },
+    heroEmpty: { fontSize: 15, color: '#DDEFE4', lineHeight: 21 },
+    navigateBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+        backgroundColor: AppColors.accent, borderRadius: 12, paddingVertical: 11, marginTop: 14,
     },
-    examBannerLabel: {
-        fontSize: 12,
-        fontWeight: '800',
-        color: AppColors.text,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 4,
+    navigateBtnText: { color: AppColors.primaryDark, fontWeight: '800', fontSize: 15 },
+
+    section: { marginBottom: 22 },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    sectionTitle: { fontSize: 17, fontWeight: '800', color: AppColors.text, marginBottom: 12 },
+    sectionLink: { fontSize: 14, fontWeight: '700', color: AppColors.primary },
+    emptyLine: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20 },
+    moreLine: { fontSize: 13, color: AppColors.mutedText, fontWeight: '600', marginTop: 2 },
+
+    railRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+    railTime: { width: 62, paddingTop: 14, alignItems: 'flex-end' },
+    railTimeText: { fontSize: 13, fontWeight: '800', color: AppColors.primary },
+    railCard: {
+        flex: 1, backgroundColor: AppColors.card, borderRadius: 14, padding: 14,
+        borderWidth: 1, borderColor: AppColors.border,
     },
-    examBannerText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: AppColors.text,
+    railCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    railCourse: { fontSize: 12, fontWeight: '900', color: AppColors.primary },
+    railTitle: { fontSize: 15, fontWeight: '700', color: AppColors.text, marginBottom: 5 },
+    railMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    railMeta: { fontSize: 13, color: AppColors.mutedText },
+
+    iconRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: AppColors.card,
+        borderRadius: 14, padding: 14, borderWidth: 1, borderColor: AppColors.border, marginBottom: 10,
     },
-    nextClassCard: {
-        backgroundColor: AppColors.primary,
-        borderRadius: 18,
-        padding: 20,
-        marginBottom: 22,
+    iconBadgeGold: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.accent + '1F',
+        justifyContent: 'center', alignItems: 'center',
     },
-    nextClassLabel: {
-        fontSize: 12,
-        fontWeight: '800',
-        color: AppColors.accent,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 10,
+    iconBadgeGreen: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.primary + '14',
+        justifyContent: 'center', alignItems: 'center',
     },
-    nextClassTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: AppColors.card,
-        marginBottom: 6,
+    iconRowBody: { flex: 1 },
+    iconRowTitle: { fontSize: 15, fontWeight: '700', color: AppColors.text, marginBottom: 3 },
+    iconRowMeta: { fontSize: 13, color: AppColors.mutedText },
+
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    gridItem: {
+        flexBasis: '31%', flexGrow: 1, backgroundColor: AppColors.card, borderRadius: 14,
+        paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: AppColors.border,
     },
-    nextClassMeta: {
-        fontSize: 14,
-        color: AppColors.card,
-        opacity: 0.9,
+    gridIcon: {
+        width: 44, height: 44, borderRadius: 14, backgroundColor: AppColors.primary + '14',
+        justifyContent: 'center', alignItems: 'center', marginBottom: 8,
     },
-    nextClassEmpty: {
-        fontSize: 15,
-        color: AppColors.card,
-        opacity: 0.9,
-        lineHeight: 21,
-    },
-    section: {
-        marginBottom: 22,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    sectionTitle: {
-        fontSize: 17,
-        fontWeight: '800',
-        color: AppColors.text,
-        marginBottom: 10,
-    },
-    sectionLink: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: AppColors.primary,
-    },
-    emptyLine: {
-        fontSize: 14,
-        color: AppColors.mutedText,
-        lineHeight: 20,
-    },
-    moreLine: {
-        fontSize: 13,
-        color: AppColors.mutedText,
-        fontWeight: '600',
-        marginTop: 2,
-    },
-    rowCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: AppColors.card,
-        borderRadius: 14,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-        marginBottom: 10,
-        gap: 12,
-    },
-    timePill: {
-        backgroundColor: AppColors.background,
-        borderRadius: 10,
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    timePillText: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: AppColors.primary,
-    },
-    rowBody: {
-        flex: 1,
-    },
-    rowTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: AppColors.text,
-        marginBottom: 3,
-    },
-    rowMeta: {
-        fontSize: 13,
-        color: AppColors.mutedText,
-    },
-    actionList: {
-        gap: 10,
-    },
-    actionCard: {
-        backgroundColor: AppColors.card,
-        borderRadius: 14,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    actionTitle: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: AppColors.primary,
-        marginBottom: 3,
-    },
-    actionText: {
-        fontSize: 13,
-        color: AppColors.mutedText,
-    },
+    gridLabel: { fontSize: 12, fontWeight: '700', color: AppColors.text, textAlign: 'center' },
 });
