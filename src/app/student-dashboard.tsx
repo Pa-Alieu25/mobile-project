@@ -1,6 +1,7 @@
 import { AppColors } from '@/constants/colors';
 import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { syncReminders } from '@/services/notifications';
 import { getItem } from '@/services/storage';
@@ -57,6 +58,23 @@ function parseTimeToMinutes(time: string): number | null {
     return hours * 60 + minutes;
 }
 
+type ExamCountdown = { days: number; courseCode: string; examDate: string };
+
+// Best-effort parse of a free-text exam date; null if it can't be understood.
+function parseExamDate(value: string): Date | null {
+    const t = Date.parse(value);
+    return Number.isNaN(t) ? null : new Date(t);
+}
+
+// Whole days from today to the given date (0 = today, negative = past).
+function daysUntil(date: Date): number {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfDate = new Date(date);
+    startOfDate.setHours(0, 0, 0, 0);
+    return Math.round((startOfDate.getTime() - startOfToday.getTime()) / 86400000);
+}
+
 export default function StudentDashboard() {
     const { signOut, token } = useAuth();
     const [studentName, setStudentName] = useState('Student');
@@ -67,6 +85,7 @@ export default function StudentDashboard() {
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
+    const [examCountdown, setExamCountdown] = useState<ExamCountdown | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [isOffline, setIsOffline] = useState(false);
@@ -111,6 +130,29 @@ export default function StudentDashboard() {
     useEffect(() => {
         loadDashboard();
     }, [loadDashboard]);
+
+    // Surface a countdown when the student has an exam within the next 14 days.
+    useEffect(() => {
+        (async () => {
+            const index = await getItem('indexNumber');
+            if (!index) return;
+            try {
+                const exams = await apiRequest<{ courseCode: string; examDate: string }[]>(
+                    `/exam-venues/search?number=${encodeURIComponent(index)}`,
+                    { token }
+                );
+                const soonest = exams
+                    .map((e) => ({ e, date: parseExamDate(e.examDate) }))
+                    .filter((x): x is { e: { courseCode: string; examDate: string }; date: Date } => x.date !== null)
+                    .map((x) => ({ courseCode: x.e.courseCode, examDate: x.e.examDate, days: daysUntil(x.date) }))
+                    .filter((x) => x.days >= 0 && x.days <= 14)
+                    .sort((a, b) => a.days - b.days)[0];
+                if (soonest) setExamCountdown(soonest);
+            } catch {
+                // No countdown if exams can't be loaded or the date isn't parseable.
+            }
+        })();
+    }, [token]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -180,6 +222,19 @@ export default function StudentDashboard() {
                 </View>
 
                 {isOffline && <OfflineBanner />}
+
+                {examCountdown && (
+                    <TouchableOpacity style={styles.examBanner} onPress={() => router.push('/exam-venue-search')}>
+                        <Text style={styles.examBannerLabel}>Exam countdown</Text>
+                        <Text style={styles.examBannerText}>
+                            {examCountdown.days === 0
+                                ? `${examCountdown.courseCode} exam is today`
+                                : `${examCountdown.courseCode} exam in ${examCountdown.days} day${examCountdown.days === 1 ? '' : 's'}`}
+                            {' · '}
+                            {examCountdown.examDate}
+                        </Text>
+                    </TouchableOpacity>
+                )}
 
                 {isLoading ? (
                     <View style={styles.loadingCard}>
@@ -365,6 +420,25 @@ const styles = StyleSheet.create({
     loadingCard: {
         paddingVertical: 60,
         alignItems: 'center',
+    },
+    examBanner: {
+        backgroundColor: AppColors.accent,
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 16,
+    },
+    examBannerLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: AppColors.text,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4,
+    },
+    examBannerText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: AppColors.text,
     },
     nextClassCard: {
         backgroundColor: AppColors.primary,
