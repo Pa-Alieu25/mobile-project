@@ -18,6 +18,7 @@ import {
     cancelAllReminders,
     CLASS_REMINDERS_ENABLED_KEY,
     ensureNotificationPermissions,
+    NIGHT_SUMMARY_ENABLED_KEY,
 } from '../services/notifications';
 import { getItem, setItem } from '../services/storage';
 import { getSubscription, type SubscriptionStatus } from '../services/subscription';
@@ -55,6 +56,9 @@ export default function ProfileSettingsScreen() {
 
         const remindersPref = await getItem(CLASS_REMINDERS_ENABLED_KEY);
         if (remindersPref !== null) setClassReminders(remindersPref === 'true');
+
+        const summaryPref = await getItem(NIGHT_SUMMARY_ENABLED_KEY);
+        if (summaryPref !== null) setNightSummary(summaryPref === 'true');
 
         setSubscription(await getSubscription());
     }
@@ -94,13 +98,27 @@ export default function ProfileSettingsScreen() {
         router.push('/paywall' as any);
     }
 
-    function handleToggleNightSummary(next: boolean) {
+    async function handleToggleNightSummary(next: boolean) {
         // Night-before summary is a Pro feature — send non-Pro users to the paywall.
         if (!subscription?.isProActive) {
             router.push('/paywall' as any);
             return;
         }
-        setNightSummary(next);
+        if (next) {
+            const granted = await ensureNotificationPermissions();
+            if (!granted) {
+                Alert.alert(
+                    'Notifications are off',
+                    'Allow notifications for ClassMate in your device settings to receive the night-before summary.'
+                );
+                return;
+            }
+            setNightSummary(true);
+            await setItem(NIGHT_SUMMARY_ENABLED_KEY, 'true');
+        } else {
+            setNightSummary(false);
+            await setItem(NIGHT_SUMMARY_ENABLED_KEY, 'false');
+        }
     }
 
     return (

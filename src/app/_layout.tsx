@@ -1,7 +1,8 @@
 import { AppColors } from '@/constants/colors';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { registerForPushNotifications } from '@/services/notifications';
-import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { router, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -14,6 +15,22 @@ function RootNavigator() {
       registerForPushNotifications(token);
     }
   }, [token]);
+
+  // Deep link: tapping a notification opens the screen it points to (via data.url).
+  useEffect(() => {
+    const goTo = (data: unknown) => {
+      const url = (data as { url?: string } | undefined)?.url;
+      if (typeof url === 'string') router.push(url as never);
+    };
+    const sub = Notifications.addNotificationResponseReceivedListener((response) =>
+      goTo(response.notification.request.content.data)
+    );
+    // Handle the app being launched by tapping a notification.
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) goTo(response.notification.request.content.data);
+    });
+    return () => sub.remove();
+  }, []);
 
   // Wait for the stored session to load before deciding what is reachable,
   // otherwise a logged-in user would briefly see the login screen on launch.

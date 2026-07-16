@@ -59,7 +59,7 @@ public class TimetableController {
 
         if ("cancelled".equalsIgnoreCase(request.status())) {
             pushService.notifyAll("Class cancelled",
-                saved.getCourseCode() + " on " + saved.getDayOfWeek() + " has been cancelled.");
+                saved.getCourseCode() + " on " + saved.getDayOfWeek() + " has been cancelled.", "/timetable");
         }
 
         return ResponseEntity.ok(saved);

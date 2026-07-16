@@ -8,8 +8,14 @@ import { getItem, setItem } from './storage';
 // an EAS development build, which is a separate step.
 
 export const CLASS_REMINDERS_ENABLED_KEY = 'classRemindersEnabled';
+export const NIGHT_SUMMARY_ENABLED_KEY = 'nightSummaryEnabled';
 const ANDROID_CHANNEL_ID = 'class-reminders';
 const DEFAULT_MINUTES_BEFORE = 30;
+const WEEK_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function androidChannel(): string | undefined {
+    return Platform.OS === 'android' ? ANDROID_CHANNEL_ID : undefined;
+}
 
 // Show the notification even when the app is foregrounded.
 Notifications.setNotificationHandler({
@@ -62,17 +68,13 @@ function classTimeToday(startTime: string): Date | null {
     return date;
 }
 
-// Clears existing reminders and schedules a notification `minutesBefore` each of
-// today's remaining (non-cancelled) classes. Returns how many were scheduled.
-export async function syncClassReminders(
+// Schedules a reminder `minutesBefore` each of today's remaining classes.
+// Does not clear existing notifications — syncReminders() does that once.
+async function scheduleClassReminders(
     classes: ReminderClass[],
     minutesBefore: number = DEFAULT_MINUTES_BEFORE
-): Promise<number> {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
+): Promise<void> {
     const now = Date.now();
-    let scheduled = 0;
-
     for (const item of classes) {
         if (item.status === 'cancelled') continue;
         const start = classTimeToday(item.startTime);
@@ -85,17 +87,76 @@ export async function syncClassReminders(
             content: {
                 title: `${item.courseCode} starts in ${minutesBefore} min`,
                 body: `${item.courseTitle} · ${item.startTime} · ${item.venue}`,
+                data: { url: '/timetable' },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DATE,
                 date: new Date(fireAt),
-                channelId: Platform.OS === 'android' ? ANDROID_CHANNEL_ID : undefined,
+                channelId: androidChannel(),
             },
         });
-        scheduled += 1;
+    }
+}
+
+// Schedules the night-before summary at 9 PM listing the next day's classes.
+async function scheduleNightSummary(timetable: ReminderClass[]): Promise<void> {
+    const now = new Date();
+    const fireAt = new Date(now);
+    fireAt.setHours(21, 0, 0, 0);
+    if (fireAt.getTime() <= now.getTime()) {
+        fireAt.setDate(fireAt.getDate() + 1);
     }
 
-    return scheduled;
+    // A 9 PM summary is about the following day.
+    const target = new Date(fireAt);
+    target.setDate(target.getDate() + 1);
+    const targetDay = WEEK_DAYS[target.getDay()];
+
+    const classes = timetable
+        .filter((c) => c.dayOfWeek === targetDay && c.status !== 'cancelled')
+        .sort((a, b) => (classTimeToday(a.startTime)?.getTime() ?? 0) - (classTimeToday(b.startTime)?.getTime() ?? 0));
+
+    const body =
+        classes.length === 0
+            ? 'You have no classes scheduled tomorrow.'
+            : `${classes.length} class${classes.length === 1 ? '' : 'es'} tomorrow: ` +
+              classes.slice(0, 4).map((c) => `${c.courseCode} ${c.startTime}`).join(', ');
+
+    await Notifications.scheduleNotificationAsync({
+        content: { title: "Tomorrow's classes", body, data: { url: '/timetable' } },
+        trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: fireAt,
+            channelId: androidChannel(),
+        },
+    });
+}
+
+// Reschedules all local reminders from the current timetable, honouring the
+// user's toggles. Call this whenever the timetable loads. Clears existing
+// scheduled notifications first so nothing is duplicated.
+export async function syncReminders(timetable: ReminderClass[]): Promise<void> {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    const perms = await Notifications.getPermissionsAsync();
+    if (!perms.granted) return;
+    if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+            name: 'Class reminders',
+            importance: Notifications.AndroidImportance.HIGH,
+        });
+    }
+
+    const classRemindersOn = (await getItem(CLASS_REMINDERS_ENABLED_KEY)) !== 'false';
+    const nightSummaryOn = (await getItem(NIGHT_SUMMARY_ENABLED_KEY)) === 'true';
+
+    if (classRemindersOn) {
+        const today = WEEK_DAYS[new Date().getDay()];
+        await scheduleClassReminders(timetable.filter((c) => c.dayOfWeek === today));
+    }
+    if (nightSummaryOn) {
+        await scheduleNightSummary(timetable);
+    }
 }
 
 export async function cancelAllReminders(): Promise<void> {
@@ -168,6 +229,7 @@ export async function notifyNewScores(scores: ScoreNotice[]): Promise<void> {
                 content: {
                     title: 'Midsem score available',
                     body: `Your ${s.courseCode} midsem score has been posted.`,
+                    data: { url: '/my-scores' },
                 },
                 trigger: null, // present immediately
             });
@@ -212,6 +274,7 @@ export async function notifyCancelledClasses(cancelled: CancelledClassNotice[]):
                 content: {
                     title: 'Class cancelled',
                     body: `${c.courseCode} (${c.dayOfWeek}) has been cancelled.`,
+                    data: { url: '/timetable' },
                 },
                 trigger: null, // present immediately
             });

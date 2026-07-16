@@ -61,7 +61,7 @@ public class MidsemScoreController {
         // Notify the specific student whose index number this score belongs to.
         userRepository.findByIdentifier(request.indexNumber().trim()).ifPresent(student ->
             pushService.notifyUser(student.getId(), "Midsem score available",
-                "Your " + request.courseCode() + " midsem score has been posted."));
+                "Your " + request.courseCode() + " midsem score has been posted.", "/my-scores"));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }

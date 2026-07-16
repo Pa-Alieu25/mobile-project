@@ -58,7 +58,7 @@ public class AnnouncementController {
             .build();
 
         Announcement saved = announcementRepository.save(announcement);
-        pushService.notifyAll(request.category() + " announcement", request.title());
+        pushService.notifyAll(request.category() + " announcement", request.title(), "/announcements");
 
         return ResponseEntity.status(HttpStatus.CREATED).body(AnnouncementResponse.from(saved));
     }
