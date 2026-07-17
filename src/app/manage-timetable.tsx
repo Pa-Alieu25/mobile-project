@@ -1,6 +1,8 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -229,8 +231,8 @@ export default function ManageTimetableScreen() {
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Text style={styles.backText}>Back</Text>
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                        <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                     </TouchableOpacity>
 
                     <Text style={styles.title}>Manage Timetable</Text>
@@ -240,14 +242,10 @@ export default function ManageTimetableScreen() {
 
                     <View style={styles.formCard}>
                         <Text style={styles.sectionTitle}>Add Class Record</Text>
-                        <Text style={styles.helperText}>
-                            Each record powers the student timetable, next-class view, and status updates.
-                        </Text>
 
                         <Text style={styles.label}>Course Code</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: CSM 281"
                             placeholderTextColor={AppColors.mutedText}
                             value={courseCode}
                             onChangeText={setCourseCode}
@@ -257,7 +255,6 @@ export default function ManageTimetableScreen() {
                         <Text style={styles.label}>Course Title</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: Object Oriented Programming"
                             placeholderTextColor={AppColors.mutedText}
                             value={courseTitle}
                             onChangeText={setCourseTitle}
@@ -266,7 +263,6 @@ export default function ManageTimetableScreen() {
                         <Text style={styles.label}>Day</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: Monday"
                             placeholderTextColor={AppColors.mutedText}
                             value={day}
                             onChangeText={setDay}
@@ -277,7 +273,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>Start Time</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="8:00 AM"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={startTime}
                                     onChangeText={setStartTime}
@@ -288,7 +283,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>End Time</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="10:00 AM"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={endTime}
                                     onChangeText={setEndTime}
@@ -299,7 +293,6 @@ export default function ManageTimetableScreen() {
                         <Text style={styles.label}>Current Venue</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: CCB Auditorium"
                             placeholderTextColor={AppColors.mutedText}
                             value={venue}
                             onChangeText={setVenue}
@@ -308,7 +301,6 @@ export default function ManageTimetableScreen() {
                         <Text style={styles.label}>Lecturer</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: Dr. Mensah"
                             placeholderTextColor={AppColors.mutedText}
                             value={lecturer}
                             onChangeText={setLecturer}
@@ -344,7 +336,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>Old Venue</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Example: Room 5"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={oldVenue}
                                     onChangeText={setOldVenue}
@@ -353,7 +344,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>New Venue</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Example: CCB Auditorium"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={newVenue}
                                     onChangeText={setNewVenue}
@@ -362,7 +352,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>Reason / Note</Text>
                                 <TextInput
                                     style={styles.noteInput}
-                                    placeholder="Example: Lecturer requested a larger room"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={updateReason}
                                     onChangeText={setUpdateReason}
@@ -379,7 +368,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>Old Time</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Example: 8:00 AM - 10:00 AM"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={oldTime}
                                     onChangeText={setOldTime}
@@ -388,7 +376,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>New Time</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Example: 2:00 PM - 4:00 PM"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={newTime}
                                     onChangeText={setNewTime}
@@ -397,7 +384,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>Reason / Note</Text>
                                 <TextInput
                                     style={styles.noteInput}
-                                    placeholder="Example: Lecturer is unavailable in the morning"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={updateReason}
                                     onChangeText={setUpdateReason}
@@ -414,7 +400,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>Cancellation Reason</Text>
                                 <TextInput
                                     style={styles.noteInput}
-                                    placeholder="Example: Lecturer is unavailable"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={updateReason}
                                     onChangeText={setUpdateReason}
@@ -425,7 +410,6 @@ export default function ManageTimetableScreen() {
                                 <Text style={styles.label}>Make-up Class Information</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Example: To be announced"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={makeUpClassInfo}
                                     onChangeText={setMakeUpClassInfo}
@@ -511,15 +495,13 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 36,
     },
-    backText: {
-        color: AppColors.primary,
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 14,
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
     },
     title: {
         fontSize: 28,
-        fontWeight: '900',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
@@ -528,6 +510,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 22,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     fileCard: {
         backgroundColor: AppColors.card,
@@ -543,10 +526,11 @@ const styles = StyleSheet.create({
         padding: 18,
         borderWidth: 1,
         borderColor: AppColors.border,
+        ...cardShadow,
     },
     sectionTitle: {
         fontSize: 18,
-        fontWeight: '900',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
         marginBottom: 6,
     },
@@ -555,10 +539,11 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         lineHeight: 20,
         marginBottom: 16,
+        fontFamily: Fonts.body,
     },
     label: {
         fontSize: 14,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.text,
         marginBottom: 8,
     },
@@ -572,6 +557,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: AppColors.text,
         backgroundColor: AppColors.background,
+        fontFamily: Fonts.body,
     },
     noteInput: {
         minHeight: 90,
@@ -585,6 +571,7 @@ const styles = StyleSheet.create({
         color: AppColors.text,
         backgroundColor: AppColors.background,
         lineHeight: 21,
+        fontFamily: Fonts.body,
     },
     timeRow: {
         flexDirection: 'row',
@@ -646,7 +633,7 @@ const styles = StyleSheet.create({
     statusText: {
         color: AppColors.mutedText,
         fontSize: 13,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyMedium,
     },
     activeStatusText: {
         color: AppColors.card,
@@ -661,7 +648,7 @@ const styles = StyleSheet.create({
     },
     updateTitle: {
         fontSize: 16,
-        fontWeight: '900',
+        fontFamily: Fonts.heading,
         color: AppColors.primary,
         marginBottom: 12,
     },
@@ -675,29 +662,10 @@ const styles = StyleSheet.create({
     saveButtonText: {
         color: AppColors.card,
         fontSize: 16,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     disabledButton: {
         backgroundColor: AppColors.primaryDark,
-    },
-    noteCard: {
-        marginTop: 18,
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    noteTitle: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: AppColors.text,
-        marginBottom: 6,
-    },
-    noteText: {
-        fontSize: 14,
-        color: AppColors.mutedText,
-        lineHeight: 20,
     },
     listSection: {
         marginTop: 18,
@@ -709,6 +677,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         marginTop: 8,
+        fontFamily: Fonts.body,
     },
     classRow: {
         backgroundColor: AppColors.card,
@@ -727,12 +696,12 @@ const styles = StyleSheet.create({
     },
     classRowCode: {
         fontSize: 13,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.primary,
     },
     classRowStatus: {
         fontSize: 12,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.mutedText,
     },
     classRowStatusCancelled: {
@@ -740,7 +709,7 @@ const styles = StyleSheet.create({
     },
     classRowTitle: {
         fontSize: 16,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 4,
     },
@@ -748,6 +717,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: AppColors.mutedText,
         marginBottom: 12,
+        fontFamily: Fonts.body,
     },
     classRowActions: {
         flexDirection: 'row',
@@ -764,7 +734,7 @@ const styles = StyleSheet.create({
     },
     cancelButtonText: {
         color: AppColors.warning,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         fontSize: 14,
     },
     restoreButton: {
@@ -778,7 +748,7 @@ const styles = StyleSheet.create({
     },
     restoreButtonText: {
         color: AppColors.primary,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         fontSize: 14,
     },
     deleteButton: {
@@ -792,7 +762,7 @@ const styles = StyleSheet.create({
     },
     deleteButtonText: {
         color: AppColors.danger,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         fontSize: 14,
     },
 });

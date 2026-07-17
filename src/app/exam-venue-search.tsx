@@ -1,8 +1,10 @@
-import { AppColors } from '@/constants/colors';
 import { NavigateButton } from '@/components/navigate-button';
 import { OfflineBanner } from '@/components/offline-banner';
+import { AppColors } from '@/constants/colors';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -103,8 +105,8 @@ export default function ExamVenueSearchScreen() {
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
             >
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.backText}>Back</Text>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                 </TouchableOpacity>
 
                 <Text style={styles.title}>Exam Venue Search</Text>
@@ -118,7 +120,6 @@ export default function ExamVenueSearchScreen() {
                     <Text style={styles.label}>Index / Reference Number</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Enter index or reference number"
                         placeholderTextColor={AppColors.mutedText}
                         value={searchNumber}
                         onChangeText={setSearchNumber}
@@ -267,15 +268,13 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 36,
     },
-    backText: {
-        color: AppColors.primary,
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 14,
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
     },
     title: {
         fontSize: 28,
-        fontWeight: '900',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
@@ -284,6 +283,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 22,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     searchCard: {
         backgroundColor: AppColors.card,
@@ -292,10 +292,11 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: AppColors.border,
         marginBottom: 18,
+        ...cardShadow,
     },
     label: {
         fontSize: 14,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.text,
         marginBottom: 8,
     },
@@ -309,6 +310,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: AppColors.text,
         backgroundColor: AppColors.background,
+        fontFamily: Fonts.body,
     },
     searchButton: {
         height: 52,
@@ -320,7 +322,7 @@ const styles = StyleSheet.create({
     searchButtonText: {
         color: AppColors.card,
         fontSize: 16,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     disabledButton: {
         backgroundColor: AppColors.primaryDark,
@@ -337,14 +339,14 @@ const styles = StyleSheet.create({
     clearButtonText: {
         color: AppColors.mutedText,
         fontSize: 14,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyMedium,
     },
     resultsSection: {
         marginBottom: 18,
     },
     sectionTitle: {
         fontSize: 17,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 10,
     },
@@ -366,13 +368,13 @@ const styles = StyleSheet.create({
     courseCode: {
         color: AppColors.primary,
         fontSize: 13,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
     },
     statusBadge: {
         backgroundColor: AppColors.warning,
         color: AppColors.card,
         fontSize: 11,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 999,
@@ -385,7 +387,7 @@ const styles = StyleSheet.create({
     courseTitle: {
         color: AppColors.text,
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         marginBottom: 14,
     },
     infoBox: {
@@ -399,13 +401,13 @@ const styles = StyleSheet.create({
     infoLabel: {
         fontSize: 12,
         color: AppColors.mutedText,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyMedium,
         marginBottom: 4,
     },
     infoValue: {
         fontSize: 14,
         color: AppColors.text,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         lineHeight: 20,
     },
     rangeBox: {
@@ -417,13 +419,13 @@ const styles = StyleSheet.create({
     rangeLabel: {
         fontSize: 12,
         color: AppColors.accent,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         marginBottom: 4,
     },
     rangeValue: {
         fontSize: 15,
         color: AppColors.card,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
     },
     emptyCard: {
         backgroundColor: AppColors.card,
@@ -432,10 +434,11 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: AppColors.border,
         marginBottom: 18,
+        ...cardShadow,
     },
     emptyTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 8,
     },
@@ -443,5 +446,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 21,
+        fontFamily: Fonts.body,
     },
 });

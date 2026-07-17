@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts } from '@/constants/ui';
 import { router } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -26,7 +27,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 30,
-        fontWeight: 'bold',
+        fontFamily: Fonts.heading,
         color: AppColors.primary,
         marginBottom: 12,
         textAlign: 'center',
@@ -36,6 +37,7 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         textAlign: 'center',
         marginBottom: 24,
+        fontFamily: Fonts.body,
     },
     button: {
         height: 52,
@@ -47,6 +49,6 @@ const styles = StyleSheet.create({
     buttonText: {
         color: AppColors.card,
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyBold,
     },
 });

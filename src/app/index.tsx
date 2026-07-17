@@ -83,7 +83,6 @@ export default function LoginScreen() {
           <Ionicons name="person-outline" size={18} color={AppColors.mutedText} />
           <TextInput
             style={styles.input}
-            placeholder="e.g. 6170524 or you@st.knust.edu.gh"
             placeholderTextColor={AppColors.mutedText}
             value={identifier}
             onChangeText={setIdentifier}
@@ -97,7 +96,6 @@ export default function LoginScreen() {
           <Ionicons name="lock-closed-outline" size={18} color={AppColors.mutedText} />
           <TextInput
             style={styles.input}
-            placeholder="Your password"
             placeholderTextColor={AppColors.mutedText}
             value={password}
             onChangeText={setPassword}

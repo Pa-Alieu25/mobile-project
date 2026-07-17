@@ -1,6 +1,8 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -57,9 +59,9 @@ export default function UploadScoreScreen() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Text style={styles.backText}>Back</Text>
+                <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                        <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                     </TouchableOpacity>
 
                     <Text style={styles.title}>Upload Midsem Score</Text>
@@ -71,7 +73,6 @@ export default function UploadScoreScreen() {
                         <Text style={styles.label}>Course Code</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: CSM 281"
                             placeholderTextColor={AppColors.mutedText}
                             value={courseCode}
                             onChangeText={setCourseCode}
@@ -81,7 +82,6 @@ export default function UploadScoreScreen() {
                         <Text style={styles.label}>Course Title</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: Object Oriented Programming"
                             placeholderTextColor={AppColors.mutedText}
                             value={courseTitle}
                             onChangeText={setCourseTitle}
@@ -90,7 +90,6 @@ export default function UploadScoreScreen() {
                         <Text style={styles.label}>Student Index Number</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: 6170524"
                             placeholderTextColor={AppColors.mutedText}
                             value={indexNumber}
                             onChangeText={setIndexNumber}
@@ -103,7 +102,6 @@ export default function UploadScoreScreen() {
                                 <Text style={styles.label}>Score</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Example: 18/20"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={score}
                                     onChangeText={setScore}
@@ -113,7 +111,6 @@ export default function UploadScoreScreen() {
                                 <Text style={styles.label}>Grade</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Example: A"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={grade}
                                     onChangeText={setGrade}
@@ -134,14 +131,6 @@ export default function UploadScoreScreen() {
                             )}
                         </TouchableOpacity>
                     </View>
-
-                    <View style={styles.noteCard}>
-                        <Text style={styles.noteTitle}>One score at a time</Text>
-                        <Text style={styles.noteText}>
-                            Bulk CSV/Excel upload is a planned addition. For now each score is matched to a single
-                            student by their index number.
-                        </Text>
-                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -153,17 +142,21 @@ const styles = StyleSheet.create({
     flex: { flex: 1 },
     container: { flex: 1, backgroundColor: AppColors.background },
     content: { padding: 20, paddingBottom: 36 },
-    backText: { color: AppColors.primary, fontSize: 15, fontWeight: '700', marginBottom: 14 },
-    title: { fontSize: 28, fontWeight: '900', color: AppColors.text },
-    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 6, marginBottom: 22, lineHeight: 20 },
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
+    },
+    title: { fontSize: 28, fontFamily: Fonts.heading, color: AppColors.text },
+    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 6, marginBottom: 22, lineHeight: 20, fontFamily: Fonts.body },
     formCard: {
         backgroundColor: AppColors.card,
         borderRadius: 18,
         padding: 18,
         borderWidth: 1,
         borderColor: AppColors.border,
+        ...cardShadow,
     },
-    label: { fontSize: 14, fontWeight: '800', color: AppColors.text, marginBottom: 8 },
+    label: { fontSize: 14, fontFamily: Fonts.bodyBold, color: AppColors.text, marginBottom: 8 },
     input: {
         height: 52,
         borderWidth: 1,
@@ -174,6 +167,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: AppColors.text,
         backgroundColor: AppColors.background,
+        fontFamily: Fonts.body,
     },
     row: { flexDirection: 'row', gap: 12 },
     rowItem: { flex: 1 },
@@ -185,15 +179,5 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     disabledButton: { backgroundColor: AppColors.primaryDark },
-    buttonText: { color: AppColors.card, fontSize: 16, fontWeight: '800' },
-    noteCard: {
-        marginTop: 18,
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    noteTitle: { fontSize: 15, fontWeight: '800', color: AppColors.text, marginBottom: 6 },
-    noteText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20 },
+    buttonText: { color: AppColors.card, fontSize: 16, fontFamily: Fonts.bodyBold },
 });

@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { getItem } from '@/services/storage';
@@ -121,8 +122,10 @@ export default function AdminPanel() {
 
     const tools = [
         { title: 'Post Announcement', text: 'Share class updates and cancellations.', route: '/post-announcement' },
-        { title: 'Manage Timetable', text: 'Add, cancel, or remove classes.', route: '/manage-timetable' },
+        { title: 'View Announcements', text: 'Open the announcement list to review or delete posts.', route: '/announcements' },
         { title: 'Add Assignment', text: 'Record assignment details and due dates.', route: '/add-assignment' },
+        { title: 'View Assignments', text: 'Open the assignment list to review or delete posts.', route: '/assignments' },
+        { title: 'Manage Timetable', text: 'Add, cancel, or remove classes.', route: '/manage-timetable' },
         { title: 'Upload Exam Venue Info', text: 'Add exam venue ranges for students.', route: '/manage-exam-venues' },
         { title: 'Upload Midsem Score', text: 'Post a student’s midsem score by index number.', route: '/upload-score' },
         { title: 'Activity log', text: 'See who did what and when across the app.', route: '/audit-log' },
@@ -159,9 +162,9 @@ export default function AdminPanel() {
                         make them a course rep.
                     </Text>
                     <View style={styles.formCard}>
+                        <Text style={styles.label}>Student index number or email</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Student index number or email"
                             placeholderTextColor={AppColors.mutedText}
                             value={repIdentifier}
                             onChangeText={setRepIdentifier}
@@ -223,30 +226,31 @@ const styles = StyleSheet.create({
     content: { padding: 20, paddingBottom: 36 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
     headerText: { flex: 1, paddingRight: 12 },
-    title: { fontSize: 26, fontWeight: '800', color: AppColors.text },
-    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 4 },
+    title: { fontSize: 26, fontFamily: Fonts.heading, color: AppColors.text },
+    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 4, fontFamily: Fonts.body },
     signOutButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: AppColors.card, borderWidth: 1, borderColor: AppColors.border },
-    signOutText: { color: AppColors.primary, fontWeight: '700', fontSize: 13 },
+    signOutText: { color: AppColors.primary, fontFamily: Fonts.bodyMedium, fontSize: 13 },
     loadingCard: { paddingVertical: 40, alignItems: 'center' },
     statStrip: { flexDirection: 'row', backgroundColor: AppColors.card, borderRadius: 14, borderWidth: 1, borderColor: AppColors.border, paddingVertical: 14, marginBottom: 22 },
     statItem: { flex: 1, alignItems: 'center' },
-    statValue: { fontSize: 18, fontWeight: '800', color: AppColors.text },
-    statLabel: { fontSize: 11, color: AppColors.mutedText, fontWeight: '600', marginTop: 3, textAlign: 'center' },
+    statValue: { fontSize: 18, fontFamily: Fonts.bodyBold, color: AppColors.text },
+    statLabel: { fontSize: 11, color: AppColors.mutedText, fontFamily: Fonts.bodyMedium, marginTop: 3, textAlign: 'center' },
     section: { marginBottom: 22 },
-    sectionTitle: { fontSize: 18, fontWeight: '800', color: AppColors.text, marginBottom: 10 },
-    helperText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20, marginBottom: 12 },
+    sectionTitle: { fontSize: 18, fontFamily: Fonts.headingSemi, color: AppColors.text, marginBottom: 10 },
+    helperText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20, marginBottom: 12, fontFamily: Fonts.body },
     formCard: { backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border },
-    input: { height: 52, borderWidth: 1, borderColor: AppColors.border, borderRadius: 12, paddingHorizontal: 14, marginBottom: 14, fontSize: 15, color: AppColors.text, backgroundColor: AppColors.background },
+    label: { fontSize: 13, fontFamily: Fonts.bodyMedium, color: AppColors.text, marginBottom: 8 },
+    input: { height: 52, borderWidth: 1, borderColor: AppColors.border, borderRadius: 12, paddingHorizontal: 14, marginBottom: 14, fontSize: 15, color: AppColors.text, backgroundColor: AppColors.background, fontFamily: Fonts.body },
     primaryButton: { height: 50, borderRadius: 12, backgroundColor: AppColors.primary, justifyContent: 'center', alignItems: 'center' },
     disabledButton: { backgroundColor: AppColors.primaryDark },
-    primaryButtonText: { color: AppColors.card, fontWeight: '800', fontSize: 15 },
+    primaryButtonText: { color: AppColors.card, fontFamily: Fonts.bodyBold, fontSize: 15 },
     repCard: { backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border, marginBottom: 12 },
-    repName: { fontSize: 17, fontWeight: '800', color: AppColors.text, marginBottom: 4 },
-    repDetail: { fontSize: 14, color: AppColors.mutedText, marginBottom: 2 },
+    repName: { fontSize: 17, fontFamily: Fonts.headingSemi, color: AppColors.text, marginBottom: 4 },
+    repDetail: { fontSize: 14, color: AppColors.mutedText, marginBottom: 2, fontFamily: Fonts.body },
     removeButton: { marginTop: 12, height: 42, borderRadius: 10, borderWidth: 1, borderColor: AppColors.danger, justifyContent: 'center', alignItems: 'center' },
-    removeButtonText: { color: AppColors.danger, fontWeight: '800', fontSize: 14 },
+    removeButtonText: { color: AppColors.danger, fontFamily: Fonts.bodyBold, fontSize: 14 },
     actionList: { gap: 12 },
     actionCard: { backgroundColor: AppColors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border },
-    actionTitle: { fontSize: 16, fontWeight: '800', color: AppColors.primary, marginBottom: 4 },
-    actionText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20 },
+    actionTitle: { fontSize: 16, fontFamily: Fonts.headingSemi, color: AppColors.primary, marginBottom: 4 },
+    actionText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20, fontFamily: Fonts.body },
 });

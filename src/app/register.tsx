@@ -112,17 +112,17 @@ export default function RegisterScreen() {
                 <Text style={styles.heading}>Create your account</Text>
                 <Text style={styles.subtitle}>Register with your KNUST student details to get started.</Text>
 
-                <Field label="Full name" icon="person-outline" placeholder="e.g. Ama Owusu" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
-                <Field label="Index number" icon="id-card-outline" placeholder="e.g. 6170524" value={indexNumber} onChangeText={setIndexNumber} autoCapitalize="characters" autoCorrect={false} />
-                <Field label="Reference number" icon="card-outline" placeholder="Student ID / reference number" value={referenceNumber} onChangeText={setReferenceNumber} autoCapitalize="characters" autoCorrect={false} />
-                <Field label="Email" icon="mail-outline" placeholder="you@st.knust.edu.gh" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
-                <Field label="Programme" icon="book-outline" placeholder="e.g. BSc Computer Science" value={programme} onChangeText={setProgramme} autoCapitalize="words" />
-                <Field label="Level" icon="layers-outline" placeholder="e.g. 200" value={level} onChangeText={setLevel} keyboardType="number-pad" />
+                <Field label="Full name" icon="person-outline" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
+                <Field label="Index number" icon="id-card-outline" value={indexNumber} onChangeText={setIndexNumber} autoCapitalize="characters" autoCorrect={false} />
+                <Field label="Reference number" icon="card-outline" value={referenceNumber} onChangeText={setReferenceNumber} autoCapitalize="characters" autoCorrect={false} />
+                <Field label="Email" icon="mail-outline" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                <Field label="Programme" icon="book-outline" value={programme} onChangeText={setProgramme} autoCapitalize="words" />
+                <Field label="Level" icon="layers-outline" value={level} onChangeText={setLevel} keyboardType="number-pad" />
 
                 <Field
                     label="Password"
                     icon="lock-closed-outline"
-                    placeholder="At least 6 characters"
+                   
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
@@ -142,7 +142,7 @@ export default function RegisterScreen() {
                 <Field
                     label="Confirm password"
                     icon="lock-closed-outline"
-                    placeholder="Re-enter your password"
+                   
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showPassword}
