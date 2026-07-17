@@ -57,9 +57,8 @@ function RootNavigator() {
       <Stack.Screen name="register" />
       <Stack.Screen name="forgot-password" />
 
-      {/* Any signed-in user */}
+      {/* Any signed-in user — student and shared screens */}
       <Stack.Protected guard={isAuthenticated}>
-        {/* Student screens */}
         <Stack.Screen name="student-dashboard" />
         <Stack.Screen name="profile-settings" />
         <Stack.Screen name="paywall" />
@@ -68,8 +67,10 @@ function RootNavigator() {
         <Stack.Screen name="assignments" />
         <Stack.Screen name="exam-venue-search" />
         <Stack.Screen name="my-scores" />
+      </Stack.Protected>
 
-        {/* Course rep screens */}
+      {/* Course rep + admin management screens */}
+      <Stack.Protected guard={isAuthenticated && (role === 'course_rep' || role === 'admin')}>
         <Stack.Screen name="rep-panel" />
         <Stack.Screen name="post-announcement" />
         <Stack.Screen name="add-assignment" />
