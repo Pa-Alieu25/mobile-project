@@ -1,9 +1,12 @@
-import { AppColors } from '@/constants/colors';
 import { NavigateButton } from '@/components/navigate-button';
 import { OfflineBanner } from '@/components/offline-banner';
+import { StatusPill } from '@/components/ui/status-pill';
+import { AppColors } from '@/constants/colors';
+import { cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { notifyCancelledClasses } from '@/services/notifications';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -49,14 +52,6 @@ function getTodayName() {
 function getTomorrowName() {
     const tomorrowIndex = (new Date().getDay() + 1) % 7;
     return weekDays[tomorrowIndex];
-}
-
-function formatStatusLabel(status: string) {
-    if (status === 'active') return 'Active';
-    if (status === 'venue_changed') return 'Venue Changed';
-    if (status === 'time_changed') return 'Time Changed';
-    if (status === 'cancelled') return 'Cancelled';
-    return status;
 }
 
 export default function TimetableScreen() {
@@ -113,11 +108,6 @@ export default function TimetableScreen() {
         return records;
     }, [activeTab, todayRecords, tomorrowRecords, records]);
 
-    const activeClassesCount = records.filter((r) => r.status !== 'cancelled').length;
-    const changedClassesCount = records.filter(
-        (r) => r.status === 'venue_changed' || r.status === 'time_changed' || r.status === 'cancelled'
-    ).length;
-
     const onRefresh = () => {
         setRefreshing(true);
         loadTimetable();
@@ -135,8 +125,14 @@ export default function TimetableScreen() {
         return 'Your weekly classes will appear here once your course rep adds them.';
     }
 
+    const tabs: { key: TimetableTab; label: string }[] = [
+        { key: 'today', label: 'Today' },
+        { key: 'tomorrow', label: 'Tomorrow' },
+        { key: 'week', label: 'Week' },
+    ];
+
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={styles.content}
@@ -145,8 +141,8 @@ export default function TimetableScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.backText}>Back</Text>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                 </TouchableOpacity>
 
                 <Text style={styles.title}>Timetable</Text>
@@ -157,84 +153,81 @@ export default function TimetableScreen() {
                 {isOffline && <OfflineBanner />}
 
                 <View style={styles.tabContainer}>
-                    <TouchableOpacity
-                        style={[styles.tabButton, activeTab === 'today' && styles.activeTabButton]}
-                        onPress={() => setActiveTab('today')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'today' && styles.activeTabText]}>Today</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.tabButton, activeTab === 'tomorrow' && styles.activeTabButton]}
-                        onPress={() => setActiveTab('tomorrow')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'tomorrow' && styles.activeTabText]}>Tomorrow</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.tabButton, activeTab === 'week' && styles.activeTabButton]}
-                        onPress={() => setActiveTab('week')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'week' && styles.activeTabText]}>Week</Text>
-                    </TouchableOpacity>
+                    {tabs.map((tab) => (
+                        <TouchableOpacity
+                            key={tab.key}
+                            style={[styles.tabButton, activeTab === tab.key && styles.activeTabButton]}
+                            onPress={() => setActiveTab(tab.key)}
+                        >
+                            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>{tab.label}</Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
 
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>
-                        {activeTab === 'today'
-                            ? `Today - ${todayName}`
-                            : activeTab === 'tomorrow'
-                                ? `Tomorrow - ${tomorrowName}`
-                                : 'Weekly Timetable'}
-                    </Text>
+                <Text style={styles.sectionTitle}>
+                    {activeTab === 'today'
+                        ? `Today · ${todayName}`
+                        : activeTab === 'tomorrow'
+                            ? `Tomorrow · ${tomorrowName}`
+                            : 'Weekly timetable'}
+                </Text>
 
-                    {isLoading ? (
-                        <View style={styles.centered}>
-                            <ActivityIndicator size="large" color={AppColors.primary} />
-                        </View>
-                    ) : error ? (
-                        <View style={styles.emptyCard}>
-                            <Text style={styles.emptyTitle}>Couldn&apos;t load the timetable</Text>
-                            <Text style={styles.emptyText}>{error}</Text>
-                            <TouchableOpacity style={styles.retryButton} onPress={loadTimetable}>
-                                <Text style={styles.retryButtonText}>Try again</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : visibleRecords.length === 0 ? (
-                        <View style={styles.emptyCard}>
-                            <Text style={styles.emptyTitle}>{getEmptyTitle()}</Text>
-                            <Text style={styles.emptyText}>{getEmptyText()}</Text>
-                        </View>
-                    ) : (
-                        visibleRecords.map((record) => (
-                            <View key={record.id} style={styles.classCard}>
+                {isLoading ? (
+                    <View style={styles.centered}>
+                        <ActivityIndicator size="large" color={AppColors.primary} />
+                    </View>
+                ) : error ? (
+                    <View style={styles.emptyCard}>
+                        <Text style={styles.emptyTitle}>Couldn&apos;t load the timetable</Text>
+                        <Text style={styles.emptyText}>{error}</Text>
+                        <TouchableOpacity style={styles.retryButton} onPress={loadTimetable}>
+                            <Text style={styles.retryButtonText}>Try again</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : visibleRecords.length === 0 ? (
+                    <View style={styles.emptyCard}>
+                        <Ionicons name="calendar-outline" size={30} color={AppColors.mutedText} />
+                        <Text style={styles.emptyTitle}>{getEmptyTitle()}</Text>
+                        <Text style={styles.emptyText}>{getEmptyText()}</Text>
+                    </View>
+                ) : (
+                    visibleRecords.map((record) => {
+                        const cancelled = record.status === 'cancelled';
+                        return (
+                            <View key={record.id} style={[styles.classCard, cardShadow, cancelled && styles.cancelledCard]}>
                                 <View style={styles.classHeader}>
                                     <Text style={styles.courseCode}>{record.courseCode}</Text>
-                                    <Text
-                                        style={[
-                                            styles.status,
-                                            record.status === 'cancelled' && styles.cancelledStatus,
-                                        ]}
-                                    >
-                                        {formatStatusLabel(record.status)}
-                                    </Text>
+                                    <StatusPill status={record.status} />
                                 </View>
 
-                                <Text style={styles.courseTitle}>{record.courseTitle}</Text>
+                                <Text style={[styles.courseTitle, cancelled && styles.strikethrough]}>{record.courseTitle}</Text>
 
-                                <Text style={styles.classDetail}>
-                                    {record.dayOfWeek} - {record.startTime} - {record.endTime}
-                                </Text>
+                                <View style={styles.detailRow}>
+                                    <Ionicons name="time-outline" size={16} color={AppColors.mutedText} />
+                                    <Text style={styles.detailText}>{record.startTime} – {record.endTime} · {record.dayOfWeek}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Ionicons name="location-outline" size={16} color={AppColors.mutedText} />
+                                    <Text style={styles.detailText}>{record.venue}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Ionicons name="person-outline" size={16} color={AppColors.mutedText} />
+                                    <Text style={styles.detailText}>{record.lecturer}</Text>
+                                </View>
+                                <View style={styles.detailRow}>
+                                    <Ionicons name="people-outline" size={16} color={AppColors.mutedText} />
+                                    <Text style={styles.detailText}>{record.classGroup}</Text>
+                                </View>
 
-                                <Text style={styles.classDetail}>Venue: {record.venue}</Text>
-                                <Text style={styles.classDetail}>Lecturer: {record.lecturer}</Text>
-                                <Text style={styles.classDetail}>Class Group: {record.classGroup}</Text>
-
-                                {record.status !== 'cancelled' && <NavigateButton query={record.venue} />}
+                                {!cancelled && (
+                                    <View style={styles.navigateWrap}>
+                                        <NavigateButton query={record.venue} />
+                                    </View>
+                                )}
                             </View>
-                        ))
-                    )}
-                </View>
+                        );
+                    })
+                )}
             </ScrollView>
         </SafeAreaView>
     );
@@ -253,15 +246,13 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 36,
     },
-    backText: {
-        color: AppColors.primary,
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 14,
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
     },
     title: {
         fontSize: 28,
-        fontWeight: '900',
+        fontWeight: '800',
         color: AppColors.text,
     },
     subtitle: {
@@ -270,36 +261,6 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 18,
         lineHeight: 20,
-    },
-    summaryCard: {
-        backgroundColor: AppColors.card,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-        padding: 18,
-        marginBottom: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    summaryItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    summaryNumber: {
-        fontSize: 26,
-        fontWeight: '900',
-        color: AppColors.primary,
-    },
-    summaryLabel: {
-        marginTop: 4,
-        fontSize: 13,
-        fontWeight: '700',
-        color: AppColors.mutedText,
-    },
-    summaryDivider: {
-        width: 1,
-        height: 42,
-        backgroundColor: AppColors.border,
     },
     tabContainer: {
         flexDirection: 'row',
@@ -327,14 +288,11 @@ const styles = StyleSheet.create({
     activeTabText: {
         color: AppColors.card,
     },
-    section: {
-        marginBottom: 22,
-    },
     sectionTitle: {
         fontSize: 18,
         fontWeight: '800',
         color: AppColors.text,
-        marginBottom: 10,
+        marginBottom: 12,
     },
     centered: {
         paddingVertical: 60,
@@ -343,20 +301,24 @@ const styles = StyleSheet.create({
     emptyCard: {
         backgroundColor: AppColors.card,
         borderRadius: 18,
-        padding: 18,
+        padding: 22,
         borderWidth: 1,
         borderColor: AppColors.border,
+        alignItems: 'center',
+        ...cardShadow,
     },
     emptyTitle: {
         fontSize: 17,
         fontWeight: '800',
         color: AppColors.text,
-        marginBottom: 8,
+        marginTop: 10,
+        marginBottom: 6,
     },
     emptyText: {
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 21,
+        textAlign: 'center',
     },
     retryButton: {
         height: 46,
@@ -364,7 +326,8 @@ const styles = StyleSheet.create({
         backgroundColor: AppColors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 12,
+        marginTop: 14,
+        paddingHorizontal: 24,
     },
     retryButtonText: {
         color: AppColors.card,
@@ -379,6 +342,9 @@ const styles = StyleSheet.create({
         borderColor: AppColors.border,
         marginBottom: 14,
     },
+    cancelledCard: {
+        borderColor: AppColors.danger + '55',
+    },
     classHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -390,24 +356,30 @@ const styles = StyleSheet.create({
         color: AppColors.primary,
         fontSize: 13,
         fontWeight: '900',
-    },
-    status: {
-        color: AppColors.warning,
-        fontSize: 12,
-        fontWeight: '800',
-    },
-    cancelledStatus: {
-        color: AppColors.danger,
+        letterSpacing: 0.3,
     },
     courseTitle: {
         color: AppColors.text,
         fontSize: 17,
         fontWeight: '800',
-        marginBottom: 8,
+        marginBottom: 12,
     },
-    classDetail: {
+    strikethrough: {
+        textDecorationLine: 'line-through',
+        color: AppColors.mutedText,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 9,
+        marginBottom: 7,
+    },
+    detailText: {
         color: AppColors.mutedText,
         fontSize: 14,
-        lineHeight: 21,
+        flex: 1,
+    },
+    navigateWrap: {
+        marginTop: 6,
     },
 });

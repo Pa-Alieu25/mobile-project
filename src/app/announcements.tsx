@@ -1,8 +1,10 @@
-import { AppColors } from '@/constants/colors';
 import { OfflineBanner } from '@/components/offline-banner';
+import { AppColors } from '@/constants/colors';
+import { cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { getItem, setItem } from '@/services/storage';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -36,6 +38,17 @@ const filterCategories = [
 ];
 
 const READ_IDS_KEY = 'readAnnouncementIds';
+
+// Icon + accent colour for each announcement category.
+function categoryStyle(category: string): { icon: keyof typeof Ionicons.glyphMap; color: string } {
+    switch (category) {
+        case 'Class Update': return { icon: 'sync-outline', color: AppColors.statusTimeChanged };
+        case 'Venue Change': return { icon: 'location-outline', color: AppColors.statusVenueChanged };
+        case 'Assignment': return { icon: 'document-text-outline', color: AppColors.accent };
+        case 'Exam': return { icon: 'school-outline', color: AppColors.danger };
+        default: return { icon: 'megaphone-outline', color: AppColors.primary };
+    }
+}
 
 export default function AnnouncementsScreen() {
     const { token } = useAuth();
@@ -81,11 +94,6 @@ export default function AnnouncementsScreen() {
         })();
     }, []);
 
-    const unreadCount = useMemo(
-        () => announcements.filter((a) => !readIds.has(a.id)).length,
-        [announcements, readIds]
-    );
-
     const filteredAnnouncements = useMemo(() => {
         if (activeFilter === 'All') return announcements;
         return announcements.filter((a) => a.category === activeFilter);
@@ -104,7 +112,7 @@ export default function AnnouncementsScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={styles.content}
@@ -113,16 +121,14 @@ export default function AnnouncementsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Text style={styles.backText}>Back</Text>
-                    </TouchableOpacity>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
+                </TouchableOpacity>
 
-                    <Text style={styles.title}>Announcements</Text>
-                    <Text style={styles.subtitle}>
-                        Class updates posted by your course reps.
-                    </Text>
-                </View>
+                <Text style={styles.title}>Announcements</Text>
+                <Text style={styles.subtitle}>
+                    Class updates posted by your course reps.
+                </Text>
 
                 {isOffline && <OfflineBanner />}
 
@@ -167,6 +173,7 @@ export default function AnnouncementsScreen() {
                     </View>
                 ) : filteredAnnouncements.length === 0 ? (
                     <View style={styles.emptyCard}>
+                        <Ionicons name="megaphone-outline" size={30} color={AppColors.mutedText} />
                         <Text style={styles.emptyTitle}>
                             {activeFilter === 'All'
                                 ? 'No announcements yet'
@@ -179,13 +186,17 @@ export default function AnnouncementsScreen() {
                 ) : (
                     filteredAnnouncements.map((announcement) => {
                         const isRead = readIds.has(announcement.id);
+                        const cat = categoryStyle(announcement.category);
                         return (
                             <View
                                 key={announcement.id}
-                                style={[styles.announcementCard, !isRead && styles.unreadCard]}
+                                style={[styles.announcementCard, cardShadow, !isRead && styles.unreadCard]}
                             >
                                 <View style={styles.cardHeader}>
-                                    <Text style={styles.category}>{announcement.category}</Text>
+                                    <View style={[styles.iconBadge, { backgroundColor: cat.color + '1A' }]}>
+                                        <Ionicons name={cat.icon} size={18} color={cat.color} />
+                                    </View>
+                                    <Text style={[styles.category, { color: cat.color }]}>{announcement.category}</Text>
 
                                     {!isRead && (
                                         <View style={styles.unreadBadge}>
@@ -198,8 +209,11 @@ export default function AnnouncementsScreen() {
                                 <Text style={styles.message}>{announcement.message}</Text>
 
                                 <View style={styles.targetBox}>
-                                    <Text style={styles.targetLabel}>Target group</Text>
-                                    <Text style={styles.targetText}>{announcement.targetClassGroup}</Text>
+                                    <Ionicons name="people-outline" size={15} color={AppColors.mutedText} />
+                                    <View style={styles.targetTextWrap}>
+                                        <Text style={styles.targetLabel}>Target group</Text>
+                                        <Text style={styles.targetText}>{announcement.targetClassGroup}</Text>
+                                    </View>
                                 </View>
 
                                 {!isRead && (
@@ -207,12 +221,16 @@ export default function AnnouncementsScreen() {
                                         style={styles.readButton}
                                         onPress={() => handleMarkAsRead(announcement.id)}
                                     >
+                                        <Ionicons name="checkmark" size={17} color={AppColors.card} />
                                         <Text style={styles.readButtonText}>Mark as read</Text>
                                     </TouchableOpacity>
                                 )}
 
                                 <View style={styles.footer}>
-                                    <Text style={styles.footerText}>{announcement.postedBy}</Text>
+                                    <View style={styles.footerMeta}>
+                                        <Ionicons name="person-circle-outline" size={15} color={AppColors.mutedText} />
+                                        <Text style={styles.footerText}>{announcement.postedBy}</Text>
+                                    </View>
                                     <Text style={styles.footerText}>{announcement.postedAt}</Text>
                                 </View>
                             </View>
@@ -237,55 +255,21 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 36,
     },
-    header: {
-        marginBottom: 18,
-    },
-    backText: {
-        color: AppColors.primary,
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 14,
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
     },
     title: {
         fontSize: 28,
-        fontWeight: '900',
+        fontWeight: '800',
         color: AppColors.text,
     },
     subtitle: {
         fontSize: 14,
         color: AppColors.mutedText,
         marginTop: 6,
+        marginBottom: 18,
         lineHeight: 20,
-    },
-    summaryCard: {
-        backgroundColor: AppColors.card,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-        padding: 18,
-        marginBottom: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    summaryItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    summaryNumber: {
-        fontSize: 26,
-        fontWeight: '900',
-        color: AppColors.primary,
-    },
-    summaryLabel: {
-        marginTop: 4,
-        fontSize: 13,
-        fontWeight: '700',
-        color: AppColors.mutedText,
-    },
-    summaryDivider: {
-        width: 1,
-        height: 42,
-        backgroundColor: AppColors.border,
     },
     filterScroll: {
         marginBottom: 16,
@@ -321,20 +305,24 @@ const styles = StyleSheet.create({
     emptyCard: {
         backgroundColor: AppColors.card,
         borderRadius: 18,
-        padding: 18,
+        padding: 22,
         borderWidth: 1,
         borderColor: AppColors.border,
+        alignItems: 'center',
+        ...cardShadow,
     },
     emptyTitle: {
         fontSize: 18,
         fontWeight: '800',
         color: AppColors.text,
-        marginBottom: 8,
+        marginTop: 10,
+        marginBottom: 6,
     },
     emptyText: {
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 21,
+        textAlign: 'center',
     },
     announcementCard: {
         backgroundColor: AppColors.card,
@@ -349,21 +337,17 @@ const styles = StyleSheet.create({
     },
     cardHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 12,
         gap: 10,
     },
+    iconBadge: {
+        width: 36, height: 36, borderRadius: 11, justifyContent: 'center', alignItems: 'center',
+    },
     category: {
-        alignSelf: 'flex-start',
-        backgroundColor: AppColors.background,
-        color: AppColors.primary,
-        fontSize: 12,
+        flex: 1,
+        fontSize: 13,
         fontWeight: '800',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 14,
-        overflow: 'hidden',
     },
     unreadBadge: {
         backgroundColor: AppColors.primary,
@@ -395,12 +379,18 @@ const styles = StyleSheet.create({
         borderColor: AppColors.border,
         padding: 12,
         marginTop: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    targetTextWrap: {
+        flex: 1,
     },
     targetLabel: {
         fontSize: 12,
         color: AppColors.mutedText,
         fontWeight: '700',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     targetText: {
         fontSize: 14,
@@ -411,8 +401,10 @@ const styles = StyleSheet.create({
         height: 46,
         borderRadius: 12,
         backgroundColor: AppColors.primary,
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
+        gap: 7,
         marginTop: 12,
     },
     readButtonText: {
@@ -427,7 +419,14 @@ const styles = StyleSheet.create({
         borderTopColor: AppColors.border,
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
         gap: 10,
+    },
+    footerMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        flex: 1,
     },
     footerText: {
         fontSize: 12,
