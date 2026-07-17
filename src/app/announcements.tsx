@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { BottomNav } from '@/components/ui/bottom-nav';
 import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
@@ -220,6 +221,7 @@ export default function AnnouncementsScreen() {
                     })
                 )}
             </ScrollView>
+            <BottomNav active="alerts" />
         </SafeAreaView>
     );
 }

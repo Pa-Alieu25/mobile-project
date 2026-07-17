@@ -1,10 +1,16 @@
 import { AppColors } from '@/constants/colors';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { registerForPushNotifications } from '@/services/notifications';
+import { PublicSans_400Regular, PublicSans_600SemiBold, PublicSans_700Bold } from '@expo-google-fonts/public-sans';
+import { Sora_600SemiBold, Sora_700Bold } from '@expo-google-fonts/sora';
+import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+
+SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { token, role, isLoading } = useAuth();
@@ -81,6 +87,25 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Sora_600SemiBold,
+    Sora_700Bold,
+    PublicSans_400Regular,
+    PublicSans_600SemiBold,
+    PublicSans_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  // Keep the splash screen up until fonts are ready (or fail).
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <AuthProvider>
       <RootNavigator />

@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { BottomNav } from '@/components/ui/bottom-nav';
 import { NavigateButton } from '@/components/navigate-button';
 import { OfflineBanner } from '@/components/offline-banner';
 import { useAuth } from '@/context/auth-context';
@@ -236,6 +237,7 @@ export default function TimetableScreen() {
                     )}
                 </View>
             </ScrollView>
+            <BottomNav active="timetable" />
         </SafeAreaView>
     );
 }

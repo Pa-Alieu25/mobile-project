@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { AppColors } from '../constants/colors';
+import { BottomNav } from '../components/ui/bottom-nav';
 import { useAuth } from '../context/auth-context';
 import {
     cancelAllReminders,
@@ -237,6 +238,7 @@ export default function ProfileSettingsScreen() {
                     <Text style={styles.dangerButtonText}>Sign Out</Text>
                 </TouchableOpacity>
             </ScrollView>
+            <BottomNav active="profile" />
         </SafeAreaView>
     );
 }
