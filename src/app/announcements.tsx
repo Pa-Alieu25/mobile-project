@@ -1,6 +1,7 @@
 import { OfflineBanner } from '@/components/offline-banner';
+import { BottomNav } from '@/components/ui/bottom-nav';
 import { AppColors } from '@/constants/colors';
-import { cardShadow } from '@/constants/ui';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { getItem, setItem } from '@/services/storage';
@@ -51,7 +52,8 @@ function categoryStyle(category: string): { icon: keyof typeof Ionicons.glyphMap
 }
 
 export default function AnnouncementsScreen() {
-    const { token } = useAuth();
+    const { token, role } = useAuth();
+    const isManager = role === 'course_rep' || role === 'admin';
     const [activeFilter, setActiveFilter] = useState<string>('All');
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [readIds, setReadIds] = useState<Set<number>>(new Set());
@@ -121,9 +123,11 @@ export default function AnnouncementsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
-                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
-                </TouchableOpacity>
+                {isManager && (
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                        <Ionicons name="chevron-back" size={22} color={AppColors.text} />
+                    </TouchableOpacity>
+                )}
 
                 <Text style={styles.title}>Announcements</Text>
                 <Text style={styles.subtitle}>
@@ -238,6 +242,8 @@ export default function AnnouncementsScreen() {
                     })
                 )}
             </ScrollView>
+
+            <BottomNav active="alerts" />
         </SafeAreaView>
     );
 }
@@ -261,7 +267,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: '800',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
@@ -270,6 +276,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 18,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     filterScroll: {
         marginBottom: 16,
@@ -293,7 +300,7 @@ const styles = StyleSheet.create({
     filterText: {
         color: AppColors.mutedText,
         fontSize: 13,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     activeFilterText: {
         color: AppColors.card,
@@ -313,7 +320,7 @@ const styles = StyleSheet.create({
     },
     emptyTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginTop: 10,
         marginBottom: 6,
@@ -323,6 +330,7 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         lineHeight: 21,
         textAlign: 'center',
+        fontFamily: Fonts.body,
     },
     announcementCard: {
         backgroundColor: AppColors.card,
@@ -347,7 +355,7 @@ const styles = StyleSheet.create({
     category: {
         flex: 1,
         fontSize: 13,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     unreadBadge: {
         backgroundColor: AppColors.primary,
@@ -358,12 +366,12 @@ const styles = StyleSheet.create({
     unreadBadgeText: {
         color: AppColors.card,
         fontSize: 11,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
         textTransform: 'uppercase',
     },
     announcementTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 6,
     },
@@ -371,6 +379,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 21,
+        fontFamily: Fonts.body,
     },
     targetBox: {
         backgroundColor: AppColors.background,
@@ -389,13 +398,13 @@ const styles = StyleSheet.create({
     targetLabel: {
         fontSize: 12,
         color: AppColors.mutedText,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyMedium,
         marginBottom: 2,
     },
     targetText: {
         fontSize: 14,
         color: AppColors.text,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     readButton: {
         height: 46,
@@ -410,7 +419,7 @@ const styles = StyleSheet.create({
     readButtonText: {
         color: AppColors.card,
         fontSize: 15,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     footer: {
         marginTop: 14,
@@ -431,6 +440,6 @@ const styles = StyleSheet.create({
     footerText: {
         fontSize: 12,
         color: AppColors.mutedText,
-        fontWeight: '600',
+        fontFamily: Fonts.bodyMedium,
     },
 });

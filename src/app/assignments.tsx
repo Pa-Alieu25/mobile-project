@@ -1,6 +1,7 @@
 import { OfflineBanner } from '@/components/offline-banner';
+import { BottomNav } from '@/components/ui/bottom-nav';
 import { AppColors } from '@/constants/colors';
-import { cardShadow } from '@/constants/ui';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { getItem, setItem } from '@/services/storage';
@@ -33,7 +34,8 @@ type AssignmentTab = 'pending' | 'completed';
 const COMPLETED_IDS_KEY = 'completedAssignmentIds';
 
 export default function AssignmentsScreen() {
-    const { token } = useAuth();
+    const { token, role } = useAuth();
+    const isManager = role === 'course_rep' || role === 'admin';
     const [activeTab, setActiveTab] = useState<AssignmentTab>('pending');
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
@@ -125,9 +127,11 @@ export default function AssignmentsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
-                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
-                </TouchableOpacity>
+                {isManager && (
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                        <Ionicons name="chevron-back" size={22} color={AppColors.text} />
+                    </TouchableOpacity>
+                )}
 
                 <Text style={styles.title}>Assignments</Text>
                 <Text style={styles.subtitle}>
@@ -230,6 +234,8 @@ export default function AssignmentsScreen() {
                     })
                 )}
             </ScrollView>
+
+            <BottomNav active="tasks" />
         </SafeAreaView>
     );
 }
@@ -253,7 +259,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: '800',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
@@ -262,6 +268,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 18,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     tabContainer: {
         flexDirection: 'row',
@@ -283,7 +290,7 @@ const styles = StyleSheet.create({
     },
     tabText: {
         fontSize: 14,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.mutedText,
     },
     activeTabText: {
@@ -304,7 +311,7 @@ const styles = StyleSheet.create({
     },
     emptyTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginTop: 10,
         marginBottom: 6,
@@ -314,6 +321,7 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         lineHeight: 21,
         textAlign: 'center',
+        fontFamily: Fonts.body,
     },
     assignmentCard: {
         backgroundColor: AppColors.card,
@@ -338,14 +346,14 @@ const styles = StyleSheet.create({
         flex: 1,
         color: AppColors.primary,
         fontSize: 13,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
         letterSpacing: 0.3,
     },
     statusBadge: {
         backgroundColor: AppColors.warning,
         color: AppColors.card,
         fontSize: 11,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 999,
@@ -357,7 +365,7 @@ const styles = StyleSheet.create({
     },
     assignmentTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 8,
     },
@@ -369,7 +377,7 @@ const styles = StyleSheet.create({
     },
     dueDate: {
         fontSize: 14,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyMedium,
         color: AppColors.warning,
     },
     instructions: {
@@ -377,6 +385,7 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         lineHeight: 21,
         marginBottom: 14,
+        fontFamily: Fonts.body,
     },
     doneButton: {
         height: 48,
@@ -391,7 +400,7 @@ const styles = StyleSheet.create({
     doneButtonText: {
         color: AppColors.card,
         fontSize: 15,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     undoButton: {
         height: 48,
@@ -408,12 +417,12 @@ const styles = StyleSheet.create({
     undoButtonText: {
         color: AppColors.primary,
         fontSize: 15,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     postedBy: {
         marginTop: 12,
         fontSize: 12,
         color: AppColors.mutedText,
-        fontWeight: '600',
+        fontFamily: Fonts.bodyMedium,
     },
 });

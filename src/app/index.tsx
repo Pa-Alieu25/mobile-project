@@ -1,5 +1,6 @@
 import { AppColors } from '@/constants/colors';
 import { API_BASE_URL as API_URL } from '@/constants/config';
+import { Fonts } from '@/constants/ui';
 import { homeRouteForRole, useAuth, type LoginResponse } from '@/context/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -133,30 +134,30 @@ const styles = StyleSheet.create({
     width: 64, height: 64, borderRadius: 18, backgroundColor: AppColors.primary,
     justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginBottom: 14,
   },
-  logoC: { color: AppColors.card, fontSize: 32, fontWeight: '800' },
+  logoC: { color: AppColors.card, fontSize: 32, fontFamily: Fonts.heading },
   logoDot: {
     position: 'absolute', top: 12, right: 12, width: 10, height: 10, borderRadius: 5,
     backgroundColor: AppColors.accent,
   },
-  appName: { fontSize: 20, fontWeight: '800', color: AppColors.primary, textAlign: 'center', marginBottom: 28 },
-  heading: { fontSize: 26, fontWeight: '800', color: AppColors.text },
-  subtitle: { fontSize: 15, color: AppColors.mutedText, marginTop: 4, marginBottom: 24 },
-  label: { fontSize: 13, fontWeight: '700', color: AppColors.text, marginBottom: 8 },
+  appName: { fontSize: 20, fontFamily: Fonts.heading, color: AppColors.primary, textAlign: 'center', marginBottom: 28 },
+  heading: { fontSize: 26, fontFamily: Fonts.heading, color: AppColors.text },
+  subtitle: { fontSize: 15, color: AppColors.mutedText, marginTop: 4, marginBottom: 24, fontFamily: Fonts.body },
+  label: { fontSize: 13, fontFamily: Fonts.bodyMedium, color: AppColors.text, marginBottom: 8 },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: 10, height: 54,
     borderWidth: 1, borderColor: AppColors.border, borderRadius: 14, paddingHorizontal: 14,
     marginBottom: 16, backgroundColor: AppColors.card,
   },
-  input: { flex: 1, fontSize: 15, color: AppColors.text },
+  input: { flex: 1, fontSize: 15, color: AppColors.text, fontFamily: Fonts.body },
   forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 20 },
-  forgotText: { fontSize: 13, fontWeight: '700', color: AppColors.primary },
+  forgotText: { fontSize: 13, fontFamily: Fonts.bodyMedium, color: AppColors.primary },
   button: {
     height: 54, backgroundColor: AppColors.primary, borderRadius: 14,
     justifyContent: 'center', alignItems: 'center',
   },
   disabledButton: { backgroundColor: AppColors.primaryDark },
-  buttonText: { color: AppColors.card, fontSize: 16, fontWeight: '800' },
+  buttonText: { color: AppColors.card, fontSize: 16, fontFamily: Fonts.bodyBold },
   footerRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 22 },
-  footerText: { fontSize: 14, color: AppColors.mutedText },
-  footerLink: { fontSize: 14, fontWeight: '800', color: AppColors.primary },
+  footerText: { fontSize: 14, color: AppColors.mutedText, fontFamily: Fonts.body },
+  footerLink: { fontSize: 14, fontFamily: Fonts.bodyBold, color: AppColors.primary },
 });
