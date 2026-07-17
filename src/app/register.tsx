@@ -1,5 +1,6 @@
 import { AppColors } from '@/constants/colors';
 import { API_BASE_URL as API_URL } from '@/constants/config';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -11,16 +12,37 @@ import {
     StyleSheet,
     Text,
     TextInput,
+    type TextInputProps,
     TouchableOpacity,
     View,
 } from 'react-native';
 
 function getPasswordStrength(password: string): { label: string; color: string } {
     if (password.length === 0) return { label: '', color: 'transparent' };
-    if (password.length < 6) return { label: 'Too short', color: '#e74c3c' };
-    if (password.length < 8) return { label: 'Weak', color: '#e67e22' };
-    if (/[A-Z]/.test(password) && /[0-9]/.test(password)) return { label: 'Strong', color: '#27ae60' };
-    return { label: 'Medium', color: '#f1c40f' };
+    if (password.length < 6) return { label: 'Too short', color: AppColors.danger };
+    if (password.length < 8) return { label: 'Weak', color: '#E67E22' };
+    if (/[A-Z]/.test(password) && /[0-9]/.test(password)) return { label: 'Strong', color: AppColors.success };
+    return { label: 'Medium', color: AppColors.accent };
+}
+
+type FieldProps = TextInputProps & {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    borderColor?: string;
+    rightSlot?: React.ReactNode;
+};
+
+function Field({ icon, label, borderColor, rightSlot, ...inputProps }: FieldProps) {
+    return (
+        <View style={styles.fieldGroup}>
+            <Text style={styles.label}>{label}</Text>
+            <View style={[styles.field, borderColor ? { borderColor } : null]}>
+                <Ionicons name={icon} size={18} color={AppColors.mutedText} />
+                <TextInput style={styles.input} placeholderTextColor={AppColors.mutedText} {...inputProps} />
+                {rightSlot}
+            </View>
+        </View>
+    );
 }
 
 export default function RegisterScreen() {
@@ -32,6 +54,7 @@ export default function RegisterScreen() {
     const [level, setLevel] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const passwordStrength = getPasswordStrength(password);
@@ -80,18 +103,34 @@ export default function RegisterScreen() {
 
     return (
         <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Register for KNUST ClassMate</Text>
+            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/')} hitSlop={8}>
+                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
+                </TouchableOpacity>
 
-                <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor={AppColors.mutedText} value={fullName} onChangeText={setFullName} autoCapitalize="words" />
-                <TextInput style={styles.input} placeholder="Index Number" placeholderTextColor={AppColors.mutedText} value={indexNumber} onChangeText={setIndexNumber} autoCapitalize="characters" autoCorrect={false} />
-                <TextInput style={styles.input} placeholder="Student ID / Reference Number" placeholderTextColor={AppColors.mutedText} value={referenceNumber} onChangeText={setReferenceNumber} autoCapitalize="characters" autoCorrect={false} />
-                <TextInput style={styles.input} placeholder="Email" placeholderTextColor={AppColors.mutedText} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
-                <TextInput style={styles.input} placeholder="Programme (e.g. BSc Computer Science)" placeholderTextColor={AppColors.mutedText} value={programme} onChangeText={setProgramme} autoCapitalize="words" />
-                <TextInput style={styles.input} placeholder="Level (e.g. 200)" placeholderTextColor={AppColors.mutedText} value={level} onChangeText={setLevel} keyboardType="number-pad" />
-                <TextInput style={styles.input} placeholder="Password" placeholderTextColor={AppColors.mutedText} value={password} onChangeText={setPassword} secureTextEntry />
+                <Text style={styles.heading}>Create your account</Text>
+                <Text style={styles.subtitle}>Register with your KNUST student details to get started.</Text>
 
+                <Field label="Full name" icon="person-outline" placeholder="e.g. Ama Owusu" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
+                <Field label="Index number" icon="id-card-outline" placeholder="e.g. 6170524" value={indexNumber} onChangeText={setIndexNumber} autoCapitalize="characters" autoCorrect={false} />
+                <Field label="Reference number" icon="card-outline" placeholder="Student ID / reference number" value={referenceNumber} onChangeText={setReferenceNumber} autoCapitalize="characters" autoCorrect={false} />
+                <Field label="Email" icon="mail-outline" placeholder="you@st.knust.edu.gh" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                <Field label="Programme" icon="book-outline" placeholder="e.g. BSc Computer Science" value={programme} onChangeText={setProgramme} autoCapitalize="words" />
+                <Field label="Level" icon="layers-outline" placeholder="e.g. 200" value={level} onChangeText={setLevel} keyboardType="number-pad" />
+
+                <Field
+                    label="Password"
+                    icon="lock-closed-outline"
+                    placeholder="At least 6 characters"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    rightSlot={
+                        <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+                            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={AppColors.mutedText} />
+                        </TouchableOpacity>
+                    }
+                />
                 {password.length > 0 && (
                     <View style={styles.strengthRow}>
                         <View style={[styles.strengthBar, { backgroundColor: passwordStrength.color }]} />
@@ -99,17 +138,28 @@ export default function RegisterScreen() {
                     </View>
                 )}
 
-                <TextInput style={[styles.input, passwordsMismatch && styles.inputError, passwordsMatch && styles.inputSuccess]} placeholder="Confirm Password" placeholderTextColor={AppColors.mutedText} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+                <Field
+                    label="Confirm password"
+                    icon="lock-closed-outline"
+                    placeholder="Re-enter your password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showPassword}
+                    borderColor={passwordsMismatch ? AppColors.danger : passwordsMatch ? AppColors.success : undefined}
+                />
                 {passwordsMismatch && <Text style={styles.errorText}>Passwords do not match</Text>}
                 {passwordsMatch && <Text style={styles.successText}>Passwords match</Text>}
 
                 <TouchableOpacity style={[styles.button, isLoading && styles.disabledButton]} onPress={handleRegister} disabled={isLoading}>
-                    {isLoading ? <ActivityIndicator color={AppColors.card} /> : <Text style={styles.buttonText}>Create Account</Text>}
+                    {isLoading ? <ActivityIndicator color={AppColors.card} /> : <Text style={styles.buttonText}>Create account</Text>}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => router.replace('/')}>
-                    <Text style={styles.linkText}>Already have an account? Sign in</Text>
-                </TouchableOpacity>
+                <View style={styles.footerRow}>
+                    <Text style={styles.footerText}>Already have an account?</Text>
+                    <TouchableOpacity onPress={() => router.replace('/')}>
+                        <Text style={styles.footerLink}>Sign in</Text>
+                    </TouchableOpacity>
+                </View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -117,27 +167,33 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: AppColors.background },
-    scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32 },
-    title: { fontSize: 32, fontWeight: 'bold', color: AppColors.primary, textAlign: 'center', marginBottom: 8 },
-    subtitle: { fontSize: 16, color: AppColors.mutedText, textAlign: 'center', marginBottom: 24 },
-    sectionLabel: { fontSize: 14, fontWeight: '700', color: AppColors.text, marginBottom: 10 },
-    roleRow: { flexDirection: 'row', gap: 12, marginBottom: 14 },
-    roleButton: { flex: 1, height: 48, borderWidth: 1, borderColor: AppColors.border, borderRadius: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: AppColors.card },
-    roleButtonActive: { backgroundColor: AppColors.primary, borderColor: AppColors.primary },
-    roleButtonText: { fontSize: 15, fontWeight: '700', color: AppColors.mutedText },
-    roleButtonTextActive: { color: AppColors.card },
-    infoBox: { backgroundColor: AppColors.card, borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: AppColors.border },
-    infoText: { fontSize: 13, color: AppColors.mutedText, lineHeight: 18 },
-    input: { height: 52, borderWidth: 1, borderColor: AppColors.border, borderRadius: 10, paddingHorizontal: 16, marginBottom: 14, fontSize: 16, backgroundColor: AppColors.card, color: AppColors.text },
-    inputError: { borderColor: '#e74c3c' },
-    inputSuccess: { borderColor: '#27ae60' },
-    strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: -8, marginBottom: 10 },
+    scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+    },
+    heading: { fontSize: 26, fontWeight: '800', color: AppColors.text },
+    subtitle: { fontSize: 15, color: AppColors.mutedText, marginTop: 4, marginBottom: 24, lineHeight: 21 },
+    fieldGroup: { marginBottom: 14 },
+    label: { fontSize: 13, fontWeight: '700', color: AppColors.text, marginBottom: 8 },
+    field: {
+        flexDirection: 'row', alignItems: 'center', gap: 10, height: 54,
+        borderWidth: 1, borderColor: AppColors.border, borderRadius: 14, paddingHorizontal: 14,
+        backgroundColor: AppColors.card,
+    },
+    input: { flex: 1, fontSize: 15, color: AppColors.text },
+    strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2, marginBottom: 14 },
     strengthBar: { height: 4, flex: 1, borderRadius: 2 },
-    strengthLabel: { fontSize: 12, fontWeight: '700' },
-    errorText: { fontSize: 12, color: '#e74c3c', marginTop: -10, marginBottom: 10 },
-    successText: { fontSize: 12, color: '#27ae60', marginTop: -10, marginBottom: 10 },
-    button: { height: 52, backgroundColor: AppColors.primary, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+    strengthLabel: { fontSize: 12, fontWeight: '800' },
+    errorText: { fontSize: 12, color: AppColors.danger, marginTop: 2, marginBottom: 14, fontWeight: '600' },
+    successText: { fontSize: 12, color: AppColors.success, marginTop: 2, marginBottom: 14, fontWeight: '600' },
+    button: {
+        height: 54, backgroundColor: AppColors.primary, borderRadius: 14,
+        justifyContent: 'center', alignItems: 'center', marginTop: 6,
+    },
     disabledButton: { backgroundColor: AppColors.primaryDark },
-    buttonText: { color: AppColors.card, fontSize: 16, fontWeight: '700' },
-    linkText: { marginTop: 20, textAlign: 'center', color: AppColors.primary, fontSize: 15, fontWeight: '600' },
+    buttonText: { color: AppColors.card, fontSize: 16, fontWeight: '800' },
+    footerRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 22 },
+    footerText: { fontSize: 14, color: AppColors.mutedText },
+    footerLink: { fontSize: 14, fontWeight: '800', color: AppColors.primary },
 });

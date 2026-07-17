@@ -1,8 +1,10 @@
-import { AppColors } from '@/constants/colors';
 import { OfflineBanner } from '@/components/offline-banner';
+import { AppColors } from '@/constants/colors';
+import { cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { getItem, setItem } from '@/services/storage';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -108,8 +110,13 @@ export default function AssignmentsScreen() {
         await persistCompleted(next);
     }
 
+    const tabs: { key: AssignmentTab; label: string; count: number }[] = [
+        { key: 'pending', label: 'Pending', count: pendingAssignments.length },
+        { key: 'completed', label: 'Completed', count: completedAssignments.length },
+    ];
+
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={styles.content}
@@ -118,8 +125,8 @@ export default function AssignmentsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.backText}>Back</Text>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                 </TouchableOpacity>
 
                 <Text style={styles.title}>Assignments</Text>
@@ -130,19 +137,17 @@ export default function AssignmentsScreen() {
                 {isOffline && <OfflineBanner />}
 
                 <View style={styles.tabContainer}>
-                    <TouchableOpacity
-                        style={[styles.tabButton, activeTab === 'pending' && styles.activeTabButton]}
-                        onPress={() => setActiveTab('pending')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>Pending</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.tabButton, activeTab === 'completed' && styles.activeTabButton]}
-                        onPress={() => setActiveTab('completed')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'completed' && styles.activeTabText]}>Completed</Text>
-                    </TouchableOpacity>
+                    {tabs.map((tab) => (
+                        <TouchableOpacity
+                            key={tab.key}
+                            style={[styles.tabButton, activeTab === tab.key && styles.activeTabButton]}
+                            onPress={() => setActiveTab(tab.key)}
+                        >
+                            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+                                {tab.label} ({tab.count})
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
 
                 {isLoading ? (
@@ -159,8 +164,13 @@ export default function AssignmentsScreen() {
                     </View>
                 ) : visibleAssignments.length === 0 ? (
                     <View style={styles.emptyCard}>
+                        <Ionicons
+                            name={activeTab === 'pending' ? 'checkmark-done-circle-outline' : 'document-text-outline'}
+                            size={30}
+                            color={AppColors.mutedText}
+                        />
                         <Text style={styles.emptyTitle}>
-                            {activeTab === 'pending' ? 'No pending assignments' : 'No completed assignments'}
+                            {activeTab === 'pending' ? "You're all caught up" : 'No completed assignments'}
                         </Text>
                         <Text style={styles.emptyText}>
                             {activeTab === 'pending'
@@ -172,8 +182,15 @@ export default function AssignmentsScreen() {
                     visibleAssignments.map((assignment) => {
                         const isCompleted = completedIds.has(assignment.id);
                         return (
-                            <View key={assignment.id} style={styles.assignmentCard}>
+                            <View key={assignment.id} style={[styles.assignmentCard, cardShadow]}>
                                 <View style={styles.cardHeader}>
+                                    <View style={[styles.iconBadge, isCompleted ? styles.iconBadgeGreen : styles.iconBadgeGold]}>
+                                        <Ionicons
+                                            name={isCompleted ? 'checkmark-done-outline' : 'document-text-outline'}
+                                            size={18}
+                                            color={isCompleted ? AppColors.success : AppColors.accent}
+                                        />
+                                    </View>
                                     <Text style={styles.courseCode}>{assignment.courseCode}</Text>
                                     <Text style={[styles.statusBadge, isCompleted && styles.completedBadge]}>
                                         {isCompleted ? 'Completed' : 'Pending'}
@@ -181,7 +198,12 @@ export default function AssignmentsScreen() {
                                 </View>
 
                                 <Text style={styles.assignmentTitle}>{assignment.title}</Text>
-                                <Text style={styles.dueDate}>Due: {assignment.dueDate}</Text>
+
+                                <View style={styles.dueRow}>
+                                    <Ionicons name="calendar-outline" size={15} color={AppColors.warning} />
+                                    <Text style={styles.dueDate}>Due {assignment.dueDate}</Text>
+                                </View>
+
                                 <Text style={styles.instructions}>{assignment.description}</Text>
 
                                 {!isCompleted ? (
@@ -189,6 +211,7 @@ export default function AssignmentsScreen() {
                                         style={styles.doneButton}
                                         onPress={() => handleMarkAsDone(assignment.id)}
                                     >
+                                        <Ionicons name="checkmark" size={18} color={AppColors.card} />
                                         <Text style={styles.doneButtonText}>Mark as done</Text>
                                     </TouchableOpacity>
                                 ) : (
@@ -196,6 +219,7 @@ export default function AssignmentsScreen() {
                                         style={styles.undoButton}
                                         onPress={() => handleMoveToPending(assignment.id)}
                                     >
+                                        <Ionicons name="arrow-undo-outline" size={16} color={AppColors.primary} />
                                         <Text style={styles.undoButtonText}>Move back to pending</Text>
                                     </TouchableOpacity>
                                 )}
@@ -223,15 +247,13 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 36,
     },
-    backText: {
-        color: AppColors.primary,
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 14,
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
     },
     title: {
         fontSize: 28,
-        fontWeight: '900',
+        fontWeight: '800',
         color: AppColors.text,
     },
     subtitle: {
@@ -240,36 +262,6 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 18,
         lineHeight: 20,
-    },
-    summaryCard: {
-        backgroundColor: AppColors.card,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-        padding: 18,
-        marginBottom: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    summaryItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    summaryNumber: {
-        fontSize: 26,
-        fontWeight: '900',
-        color: AppColors.primary,
-    },
-    summaryLabel: {
-        marginTop: 4,
-        fontSize: 13,
-        fontWeight: '700',
-        color: AppColors.mutedText,
-    },
-    summaryDivider: {
-        width: 1,
-        height: 42,
-        backgroundColor: AppColors.border,
     },
     tabContainer: {
         flexDirection: 'row',
@@ -304,20 +296,24 @@ const styles = StyleSheet.create({
     emptyCard: {
         backgroundColor: AppColors.card,
         borderRadius: 18,
-        padding: 18,
+        padding: 22,
         borderWidth: 1,
         borderColor: AppColors.border,
+        alignItems: 'center',
+        ...cardShadow,
     },
     emptyTitle: {
         fontSize: 18,
         fontWeight: '800',
         color: AppColors.text,
-        marginBottom: 8,
+        marginTop: 10,
+        marginBottom: 6,
     },
     emptyText: {
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 21,
+        textAlign: 'center',
     },
     assignmentCard: {
         backgroundColor: AppColors.card,
@@ -329,20 +325,21 @@ const styles = StyleSheet.create({
     },
     cardHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 12,
         gap: 10,
     },
+    iconBadge: {
+        width: 36, height: 36, borderRadius: 11, justifyContent: 'center', alignItems: 'center',
+    },
+    iconBadgeGold: { backgroundColor: AppColors.accent + '1F' },
+    iconBadgeGreen: { backgroundColor: AppColors.primary + '14' },
     courseCode: {
-        alignSelf: 'flex-start',
-        backgroundColor: AppColors.background,
+        flex: 1,
         color: AppColors.primary,
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '900',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 14,
+        letterSpacing: 0.3,
     },
     statusBadge: {
         backgroundColor: AppColors.warning,
@@ -362,13 +359,18 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
         color: AppColors.text,
-        marginBottom: 6,
+        marginBottom: 8,
+    },
+    dueRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 10,
     },
     dueDate: {
         fontSize: 14,
         fontWeight: '700',
         color: AppColors.warning,
-        marginBottom: 8,
     },
     instructions: {
         fontSize: 14,
@@ -380,8 +382,10 @@ const styles = StyleSheet.create({
         height: 48,
         borderRadius: 12,
         backgroundColor: AppColors.success,
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
+        gap: 7,
         marginTop: 10,
     },
     doneButtonText: {
@@ -394,8 +398,10 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         borderWidth: 1,
         borderColor: AppColors.primary,
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
+        gap: 7,
         marginTop: 10,
         backgroundColor: AppColors.card,
     },
