@@ -1,6 +1,8 @@
 import { AppColors } from '@/constants/colors';
 import { isPaystackConfigured, PAYSTACK_PUBLIC_KEY, PAYSTACK_TEST_MODE } from '@/config/paystack';
+import { Fonts } from '@/constants/ui';
 import { getItem } from '@/services/storage';
+import { Ionicons } from '@expo/vector-icons';
 import {
     activatePro,
     cancelPro,
@@ -107,8 +109,8 @@ function PaywallContent() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.backText}>Back</Text>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                 </TouchableOpacity>
 
                 <Text style={styles.title}>ClassMate Pro</Text>
@@ -205,9 +207,12 @@ function PaywallContent() {
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: AppColors.background },
     content: { padding: 20, paddingBottom: 40 },
-    backText: { color: AppColors.primary, fontSize: 15, fontWeight: '700', marginBottom: 14 },
-    title: { fontSize: 28, fontWeight: '900', color: AppColors.text },
-    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 6, marginBottom: 20, lineHeight: 20 },
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
+    },
+    title: { fontSize: 28, fontFamily: Fonts.heading, color: AppColors.text },
+    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 6, marginBottom: 20, lineHeight: 20, fontFamily: Fonts.body },
     centered: { paddingVertical: 60, alignItems: 'center' },
     statusCard: {
         backgroundColor: AppColors.primary,
@@ -215,10 +220,10 @@ const styles = StyleSheet.create({
         padding: 18,
         marginBottom: 22,
     },
-    statusLabel: { color: AppColors.accent, fontSize: 13, fontWeight: '800', marginBottom: 6 },
-    statusValue: { color: AppColors.card, fontSize: 22, fontWeight: '900', marginBottom: 6 },
-    statusHint: { color: AppColors.card, fontSize: 14, lineHeight: 20 },
-    sectionTitle: { fontSize: 16, fontWeight: '800', color: AppColors.text, marginBottom: 10 },
+    statusLabel: { color: AppColors.accent, fontSize: 13, fontFamily: Fonts.bodyBold, marginBottom: 6 },
+    statusValue: { color: AppColors.card, fontSize: 22, fontFamily: Fonts.heading, marginBottom: 6 },
+    statusHint: { color: AppColors.card, fontSize: 14, lineHeight: 20, fontFamily: Fonts.body },
+    sectionTitle: { fontSize: 16, fontFamily: Fonts.headingSemi, color: AppColors.text, marginBottom: 10 },
     card: {
         backgroundColor: AppColors.card,
         borderRadius: 16,
@@ -230,7 +235,7 @@ const styles = StyleSheet.create({
     featureRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 6, gap: 10 },
     check: { color: AppColors.success, fontSize: 16, fontWeight: '900', width: 18 },
     star: { color: AppColors.accent, fontSize: 16, fontWeight: '900', width: 18 },
-    featureText: { flex: 1, fontSize: 14, color: AppColors.text, lineHeight: 20 },
+    featureText: { flex: 1, fontSize: 14, color: AppColors.text, lineHeight: 20, fontFamily: Fonts.body },
     primaryButton: {
         height: 52,
         backgroundColor: AppColors.primary,
@@ -238,7 +243,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    primaryButtonText: { color: AppColors.card, fontSize: 16, fontWeight: '800' },
+    primaryButtonText: { color: AppColors.card, fontSize: 16, fontFamily: Fonts.bodyBold },
     secondaryButton: {
         height: 52,
         borderRadius: 14,
@@ -247,7 +252,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    secondaryButtonText: { color: AppColors.danger, fontSize: 16, fontWeight: '800' },
+    secondaryButtonText: { color: AppColors.danger, fontSize: 16, fontFamily: Fonts.bodyBold },
     disabled: { opacity: 0.6 },
-    footnote: { fontSize: 12, color: AppColors.mutedText, lineHeight: 18, marginTop: 14, textAlign: 'center' },
+    footnote: { fontSize: 12, color: AppColors.mutedText, lineHeight: 18, marginTop: 14, textAlign: 'center', fontFamily: Fonts.body },
 });
