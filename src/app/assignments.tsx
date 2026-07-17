@@ -3,13 +3,16 @@ import { BottomNav } from '@/components/ui/bottom-nav';
 import { AppColors } from '@/constants/colors';
 import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
-import { CacheKeys, fetchWithCache } from '@/services/cache';
+import { apiRequest } from '@/services/api';
+import { CacheKeys, fetchWithCache, writeCache } from '@/services/cache';
+import { formatFileSize, openAssignmentDocument } from '@/services/documents';
 import { getItem, setItem } from '@/services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -27,6 +30,10 @@ type Assignment = {
     dueDate: string;
     classGroup: string;
     postedBy: string;
+    postedByUserId?: number | null;
+    documentName?: string | null;
+    documentType?: string | null;
+    documentSize?: number | null;
 };
 
 type AssignmentTab = 'pending' | 'completed';
@@ -39,6 +46,9 @@ export default function AssignmentsScreen() {
     const [activeTab, setActiveTab] = useState<AssignmentTab>('pending');
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [downloadingId, setDownloadingId] = useState<number | null>(null);
+    const [flash, setFlash] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -77,6 +87,57 @@ export default function AssignmentsScreen() {
             }
         })();
     }, []);
+
+    // Load the signed-in user's id so reps see manage controls only on their own posts.
+    useEffect(() => {
+        (async () => {
+            const raw = await getItem('userId');
+            if (raw) setCurrentUserId(Number(raw));
+        })();
+    }, []);
+
+    const showFlash = (message: string) => {
+        setFlash(message);
+        setTimeout(() => setFlash(null), 2500);
+    };
+
+    const canManage = (a: Assignment) =>
+        role === 'admin' || (role === 'course_rep' && a.postedByUserId != null && a.postedByUserId === currentUserId);
+
+    const confirmDelete = (a: Assignment) => {
+        Alert.alert(
+            'Delete this assignment?',
+            'Students will no longer be able to view it. This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => handleDelete(a) },
+            ]
+        );
+    };
+
+    const handleDelete = async (a: Assignment) => {
+        try {
+            await apiRequest(`/assignments/${a.id}`, { method: 'DELETE', token });
+            const next = assignments.filter((item) => item.id !== a.id);
+            setAssignments(next);
+            await writeCache(CacheKeys.assignments, next); // keep offline cache in sync
+            showFlash('Assignment deleted.');
+        } catch (e) {
+            Alert.alert('Could not delete', e instanceof Error ? e.message : 'The assignment is still there. Please try again.');
+        }
+    };
+
+    const handleOpenDocument = async (a: Assignment) => {
+        if (!a.documentName) return;
+        try {
+            setDownloadingId(a.id);
+            await openAssignmentDocument(a.id, a.documentName, token);
+        } catch (e) {
+            Alert.alert('Could not open document', e instanceof Error ? e.message : 'Please try again.');
+        } finally {
+            setDownloadingId(null);
+        }
+    };
 
     const pendingAssignments = useMemo(
         () => assignments.filter((a) => !completedIds.has(a.id)),
@@ -154,6 +215,13 @@ export default function AssignmentsScreen() {
                     ))}
                 </View>
 
+                {flash && (
+                    <View style={styles.flash}>
+                        <Ionicons name="checkmark-circle" size={16} color={AppColors.success} />
+                        <Text style={styles.flashText}>{flash}</Text>
+                    </View>
+                )}
+
                 {isLoading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color={AppColors.primary} />
@@ -199,6 +267,11 @@ export default function AssignmentsScreen() {
                                     <Text style={[styles.statusBadge, isCompleted && styles.completedBadge]}>
                                         {isCompleted ? 'Completed' : 'Pending'}
                                     </Text>
+                                    {canManage(assignment) && (
+                                        <TouchableOpacity onPress={() => confirmDelete(assignment)} hitSlop={8} style={styles.menuButton}>
+                                            <Ionicons name="ellipsis-vertical" size={18} color={AppColors.mutedText} />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
 
                                 <Text style={styles.assignmentTitle}>{assignment.title}</Text>
@@ -209,6 +282,31 @@ export default function AssignmentsScreen() {
                                 </View>
 
                                 <Text style={styles.instructions}>{assignment.description}</Text>
+
+                                {assignment.documentName && (
+                                    <TouchableOpacity
+                                        style={styles.docButton}
+                                        onPress={() => handleOpenDocument(assignment)}
+                                        disabled={downloadingId === assignment.id}
+                                    >
+                                        <View style={styles.docButtonIcon}>
+                                            <Ionicons name="document-attach" size={18} color={AppColors.primary} />
+                                        </View>
+                                        <View style={styles.docButtonBody}>
+                                            <Text style={styles.docButtonName} numberOfLines={1}>{assignment.documentName}</Text>
+                                            <Text style={styles.docButtonMeta}>
+                                                {downloadingId === assignment.id
+                                                    ? 'Opening…'
+                                                    : `Tap to open${assignment.documentSize ? ` · ${formatFileSize(assignment.documentSize)}` : ''}`}
+                                            </Text>
+                                        </View>
+                                        {downloadingId === assignment.id ? (
+                                            <ActivityIndicator size="small" color={AppColors.primary} />
+                                        ) : (
+                                            <Ionicons name="download-outline" size={20} color={AppColors.primary} />
+                                        )}
+                                    </TouchableOpacity>
+                                )}
 
                                 {!isCompleted ? (
                                     <TouchableOpacity
@@ -331,12 +429,46 @@ const styles = StyleSheet.create({
         borderColor: AppColors.border,
         marginBottom: 14,
     },
+    flash: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: AppColors.success + '18',
+        borderWidth: 1,
+        borderColor: AppColors.success + '40',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginBottom: 14,
+    },
+    flashText: { color: AppColors.success, fontSize: 13, fontFamily: Fonts.bodyBold },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 12,
         gap: 10,
     },
+    menuButton: {
+        marginLeft: 2,
+    },
+    docButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: AppColors.primary + '33',
+        backgroundColor: AppColors.primary + '0D',
+        marginBottom: 14,
+    },
+    docButtonIcon: {
+        width: 38, height: 38, borderRadius: 11, backgroundColor: AppColors.card,
+        justifyContent: 'center', alignItems: 'center',
+    },
+    docButtonBody: { flex: 1 },
+    docButtonName: { fontSize: 14, fontFamily: Fonts.bodyBold, color: AppColors.text },
+    docButtonMeta: { fontSize: 12, color: AppColors.mutedText, marginTop: 2, fontFamily: Fonts.body },
     iconBadge: {
         width: 36, height: 36, borderRadius: 11, justifyContent: 'center', alignItems: 'center',
     },

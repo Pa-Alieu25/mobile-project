@@ -7,6 +7,7 @@ public record AnnouncementResponse(
     String category,
     String targetClassGroup,
     String postedBy,
+    Long postedByUserId,
     String postedAt
 ) {
     public static AnnouncementResponse from(Announcement a) {
@@ -17,6 +18,7 @@ public record AnnouncementResponse(
             a.getCategory(),
             a.getTargetClassGroup(),
             a.getPostedBy(),
+            a.getPostedByUserId(),
             a.getPostedAtFormatted()
         );
     }

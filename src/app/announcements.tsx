@@ -3,13 +3,15 @@ import { BottomNav } from '@/components/ui/bottom-nav';
 import { AppColors } from '@/constants/colors';
 import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
-import { CacheKeys, fetchWithCache } from '@/services/cache';
+import { apiRequest } from '@/services/api';
+import { CacheKeys, fetchWithCache, writeCache } from '@/services/cache';
 import { getItem, setItem } from '@/services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -26,6 +28,7 @@ type Announcement = {
     category: string;
     targetClassGroup: string;
     postedBy: string;
+    postedByUserId?: number | null;
     postedAt: string;
 };
 
@@ -57,6 +60,8 @@ export default function AnnouncementsScreen() {
     const [activeFilter, setActiveFilter] = useState<string>('All');
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [readIds, setReadIds] = useState<Set<number>>(new Set());
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [flash, setFlash] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -95,6 +100,45 @@ export default function AnnouncementsScreen() {
             }
         })();
     }, []);
+
+    // Load the signed-in user's id so reps see manage controls only on their own posts.
+    useEffect(() => {
+        (async () => {
+            const raw = await getItem('userId');
+            if (raw) setCurrentUserId(Number(raw));
+        })();
+    }, []);
+
+    const showFlash = (message: string) => {
+        setFlash(message);
+        setTimeout(() => setFlash(null), 2500);
+    };
+
+    const canManage = (a: Announcement) =>
+        role === 'admin' || (role === 'course_rep' && a.postedByUserId != null && a.postedByUserId === currentUserId);
+
+    const confirmDelete = (a: Announcement) => {
+        Alert.alert(
+            'Delete this announcement?',
+            'Students will no longer be able to view it. This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => handleDelete(a) },
+            ]
+        );
+    };
+
+    const handleDelete = async (a: Announcement) => {
+        try {
+            await apiRequest(`/announcements/${a.id}`, { method: 'DELETE', token });
+            const next = announcements.filter((item) => item.id !== a.id);
+            setAnnouncements(next);
+            await writeCache(CacheKeys.announcements, next); // keep offline cache in sync
+            showFlash('Announcement deleted.');
+        } catch (e) {
+            Alert.alert('Could not delete', e instanceof Error ? e.message : 'The announcement is still there. Please try again.');
+        }
+    };
 
     const filteredAnnouncements = useMemo(() => {
         if (activeFilter === 'All') return announcements;
@@ -163,6 +207,13 @@ export default function AnnouncementsScreen() {
                     ))}
                 </ScrollView>
 
+                {flash && (
+                    <View style={styles.flash}>
+                        <Ionicons name="checkmark-circle" size={16} color={AppColors.success} />
+                        <Text style={styles.flashText}>{flash}</Text>
+                    </View>
+                )}
+
                 {isLoading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color={AppColors.primary} />
@@ -206,6 +257,11 @@ export default function AnnouncementsScreen() {
                                         <View style={styles.unreadBadge}>
                                             <Text style={styles.unreadBadgeText}>Unread</Text>
                                         </View>
+                                    )}
+                                    {canManage(announcement) && (
+                                        <TouchableOpacity onPress={() => confirmDelete(announcement)} hitSlop={8} style={styles.menuButton}>
+                                            <Ionicons name="ellipsis-vertical" size={18} color={AppColors.mutedText} />
+                                        </TouchableOpacity>
                                     )}
                                 </View>
 
@@ -343,11 +399,27 @@ const styles = StyleSheet.create({
     unreadCard: {
         borderColor: AppColors.primary,
     },
+    flash: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: AppColors.success + '18',
+        borderWidth: 1,
+        borderColor: AppColors.success + '40',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginBottom: 14,
+    },
+    flashText: { color: AppColors.success, fontSize: 13, fontFamily: Fonts.bodyBold },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 12,
         gap: 10,
+    },
+    menuButton: {
+        marginLeft: 2,
     },
     iconBadge: {
         width: 36, height: 36, borderRadius: 11, justifyContent: 'center', alignItems: 'center',

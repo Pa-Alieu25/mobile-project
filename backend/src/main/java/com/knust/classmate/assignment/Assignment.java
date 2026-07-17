@@ -32,6 +32,21 @@ public class Assignment {
     @Column(nullable = false)
     private String postedBy;
 
+    // Owner of the post, used to authorise deletion (creator or admin only).
+    @Column
+    private Long postedByUserId;
+
+    // Document metadata. The file bytes live in AssignmentDocument; these light
+    // fields tell the client whether an attachment exists without loading it.
+    @Column
+    private String documentName;
+
+    @Column
+    private String documentType;
+
+    @Column
+    private Long documentSize;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime postedAt;
@@ -51,6 +66,15 @@ public class Assignment {
     public void setClassGroup(String classGroup) { this.classGroup = classGroup; }
     public String getPostedBy() { return postedBy; }
     public void setPostedBy(String postedBy) { this.postedBy = postedBy; }
+    public Long getPostedByUserId() { return postedByUserId; }
+    public void setPostedByUserId(Long postedByUserId) { this.postedByUserId = postedByUserId; }
+    public String getDocumentName() { return documentName; }
+    public void setDocumentName(String documentName) { this.documentName = documentName; }
+    public String getDocumentType() { return documentType; }
+    public void setDocumentType(String documentType) { this.documentType = documentType; }
+    public Long getDocumentSize() { return documentSize; }
+    public void setDocumentSize(Long documentSize) { this.documentSize = documentSize; }
+    public boolean isHasDocument() { return documentName != null; }
     public LocalDateTime getPostedAt() { return postedAt; }
 
     public String getPostedAtFormatted() {
@@ -62,6 +86,7 @@ public class Assignment {
 
     public static class Builder {
         private String courseCode, title, description, dueDate, classGroup, postedBy;
+        private Long postedByUserId;
 
         public Builder courseCode(String v) { this.courseCode = v; return this; }
         public Builder title(String v) { this.title = v; return this; }
@@ -69,6 +94,7 @@ public class Assignment {
         public Builder dueDate(String v) { this.dueDate = v; return this; }
         public Builder classGroup(String v) { this.classGroup = v; return this; }
         public Builder postedBy(String v) { this.postedBy = v; return this; }
+        public Builder postedByUserId(Long v) { this.postedByUserId = v; return this; }
 
         public Assignment build() {
             Assignment a = new Assignment();
@@ -78,6 +104,7 @@ public class Assignment {
             a.dueDate = this.dueDate;
             a.classGroup = this.classGroup;
             a.postedBy = this.postedBy;
+            a.postedByUserId = this.postedByUserId;
             return a;
         }
     }

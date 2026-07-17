@@ -1,9 +1,11 @@
 package com.knust.classmate.announcement;
 
 import com.knust.classmate.audit.AuditService;
+import com.knust.classmate.exception.ApiException;
 import com.knust.classmate.notification.PushService;
 import com.knust.classmate.user.User;
 import com.knust.classmate.user.UserRepository;
+import com.knust.classmate.user.UserRole;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -66,5 +68,25 @@ public class AnnouncementController {
         auditService.log("ANNOUNCEMENT_POSTED", request.category() + ": " + request.title());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(AnnouncementResponse.from(saved));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName())
+            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found."));
+        Announcement announcement = announcementRepository.findById(id)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Announcement not found."));
+
+        // Only the announcement's creator or an admin may delete it.
+        boolean isAdmin = user.getRole() == UserRole.ADMIN;
+        boolean isOwner = announcement.getPostedByUserId() != null
+            && announcement.getPostedByUserId().equals(user.getId());
+        if (!isAdmin && !isOwner) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "You can only delete announcements you posted.");
+        }
+
+        announcementRepository.delete(announcement);
+        auditService.log("ANNOUNCEMENT_DELETED", announcement.getCategory() + ": " + announcement.getTitle());
+        return ResponseEntity.noContent().build();
     }
 }
