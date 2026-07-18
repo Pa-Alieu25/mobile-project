@@ -432,7 +432,6 @@ export default function ManageTimetableScreen() {
 
                     <View style={styles.listSection}>
                         <Text style={styles.sectionTitle}>Existing classes</Text>
-                        <Text style={styles.helperText}>Cancel a class to alert students, or remove it entirely.</Text>
 
                         {isLoadingList ? (
                             <ActivityIndicator color={AppColors.primary} style={styles.listLoader} />
