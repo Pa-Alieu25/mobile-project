@@ -1,6 +1,8 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -91,8 +93,8 @@ export default function PostAnnouncementScreen() {
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Text style={styles.backText}>Back</Text>
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                        <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                     </TouchableOpacity>
 
                     <Text style={styles.title}>Post Announcement</Text>
@@ -104,7 +106,6 @@ export default function PostAnnouncementScreen() {
                         <Text style={styles.label}>Title</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Example: CSM 281 class postponed"
                             placeholderTextColor={AppColors.mutedText}
                             value={title}
                             onChangeText={setTitle}
@@ -136,7 +137,6 @@ export default function PostAnnouncementScreen() {
                         <Text style={styles.label}>Message</Text>
                         <TextInput
                             style={styles.messageInput}
-                            placeholder="Write the full announcement here..."
                             placeholderTextColor={AppColors.mutedText}
                             value={message}
                             onChangeText={setMessage}
@@ -155,14 +155,6 @@ export default function PostAnnouncementScreen() {
                                 <Text style={styles.postButtonText}>Post Announcement</Text>
                             )}
                         </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.noteCard}>
-                        <Text style={styles.noteTitle}>Posting guide</Text>
-                        <Text style={styles.noteText}>
-                            Keep announcements short, clear, and academic. Include the course
-                            code, venue, date, and time when needed.
-                        </Text>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -186,15 +178,13 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 36,
     },
-    backText: {
-        color: AppColors.primary,
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 14,
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
     },
     title: {
         fontSize: 28,
-        fontWeight: '900',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
@@ -203,6 +193,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 22,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     formCard: {
         backgroundColor: AppColors.card,
@@ -210,10 +201,11 @@ const styles = StyleSheet.create({
         padding: 18,
         borderWidth: 1,
         borderColor: AppColors.border,
+        ...cardShadow,
     },
     label: {
         fontSize: 14,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.text,
         marginBottom: 8,
     },
@@ -227,6 +219,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: AppColors.text,
         backgroundColor: AppColors.background,
+        fontFamily: Fonts.body,
     },
     categoryList: {
         flexDirection: 'row',
@@ -249,7 +242,7 @@ const styles = StyleSheet.create({
     categoryText: {
         color: AppColors.mutedText,
         fontSize: 13,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyMedium,
     },
     activeCategoryText: {
         color: AppColors.card,
@@ -266,6 +259,7 @@ const styles = StyleSheet.create({
         color: AppColors.text,
         backgroundColor: AppColors.background,
         lineHeight: 21,
+        fontFamily: Fonts.body,
     },
     postButton: {
         height: 52,
@@ -277,28 +271,9 @@ const styles = StyleSheet.create({
     postButtonText: {
         color: AppColors.card,
         fontSize: 16,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     disabledButton: {
         backgroundColor: AppColors.primaryDark,
-    },
-    noteCard: {
-        marginTop: 18,
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    noteTitle: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: AppColors.text,
-        marginBottom: 6,
-    },
-    noteText: {
-        fontSize: 14,
-        color: AppColors.mutedText,
-        lineHeight: 20,
     },
 });

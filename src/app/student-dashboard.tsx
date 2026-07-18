@@ -1,7 +1,8 @@
 import { AppColors } from '@/constants/colors';
 import { OfflineBanner } from '@/components/offline-banner';
+import { BottomNav } from '@/components/ui/bottom-nav';
 import { StatusPill } from '@/components/ui/status-pill';
-import { cardShadow } from '@/constants/ui';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
@@ -217,7 +218,7 @@ export default function StudentDashboard() {
     const profileLine = [programme, level ? `Level ${level}` : ''].filter(Boolean).join(' · ');
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={styles.content}
@@ -407,6 +408,8 @@ export default function StudentDashboard() {
                     </>
                 )}
             </ScrollView>
+
+            <BottomNav active="home" />
         </SafeAreaView>
     );
 }
@@ -421,10 +424,10 @@ const styles = StyleSheet.create({
         width: 46, height: 46, borderRadius: 23, backgroundColor: AppColors.primary,
         justifyContent: 'center', alignItems: 'center',
     },
-    avatarText: { color: AppColors.card, fontWeight: '800', fontSize: 16 },
+    avatarText: { color: AppColors.card, fontFamily: Fonts.bodyBold, fontSize: 16 },
     headerText: { flex: 1 },
-    greeting: { fontSize: 20, fontWeight: '800', color: AppColors.text },
-    subGreeting: { fontSize: 13, color: AppColors.mutedText, marginTop: 2 },
+    greeting: { fontSize: 20, fontFamily: Fonts.heading, color: AppColors.text },
+    subGreeting: { fontSize: 13, color: AppColors.mutedText, marginTop: 2, fontFamily: Fonts.body },
     bellButton: {
         width: 42, height: 42, borderRadius: 21, backgroundColor: AppColors.card,
         borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center',
@@ -443,45 +446,45 @@ const styles = StyleSheet.create({
         backgroundColor: AppColors.accent, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
         marginBottom: 18,
     },
-    examStripText: { flex: 1, fontSize: 14, fontWeight: '800', color: AppColors.text },
+    examStripText: { flex: 1, fontSize: 14, fontFamily: Fonts.bodyBold, color: AppColors.text },
 
     loadingCard: { paddingVertical: 60, alignItems: 'center' },
 
     hero: { backgroundColor: AppColors.primary, borderRadius: 18, padding: 20, marginBottom: 22 },
     heroLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
     heroLabel: {
-        fontSize: 12, fontWeight: '800', color: AppColors.accent,
+        fontSize: 12, fontFamily: Fonts.bodyBold, color: AppColors.accent,
         textTransform: 'uppercase', letterSpacing: 0.5,
     },
-    heroTitle: { fontSize: 21, fontWeight: '800', color: AppColors.card, marginBottom: 10 },
+    heroTitle: { fontSize: 21, fontFamily: Fonts.heading, color: AppColors.card, marginBottom: 10 },
     heroMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
-    heroMeta: { fontSize: 14, color: '#DDEFE4' },
-    heroEmpty: { fontSize: 15, color: '#DDEFE4', lineHeight: 21 },
+    heroMeta: { fontSize: 14, color: '#DDEFE4', fontFamily: Fonts.body },
+    heroEmpty: { fontSize: 15, color: '#DDEFE4', lineHeight: 21, fontFamily: Fonts.body },
     navigateBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
         backgroundColor: AppColors.accent, borderRadius: 12, paddingVertical: 11, marginTop: 14,
     },
-    navigateBtnText: { color: AppColors.primaryDark, fontWeight: '800', fontSize: 15 },
+    navigateBtnText: { color: AppColors.primaryDark, fontFamily: Fonts.bodyBold, fontSize: 15 },
 
     section: { marginBottom: 22 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    sectionTitle: { fontSize: 17, fontWeight: '800', color: AppColors.text, marginBottom: 12 },
-    sectionLink: { fontSize: 14, fontWeight: '700', color: AppColors.primary },
-    emptyLine: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20 },
-    moreLine: { fontSize: 13, color: AppColors.mutedText, fontWeight: '600', marginTop: 2 },
+    sectionTitle: { fontSize: 17, fontFamily: Fonts.headingSemi, color: AppColors.text, marginBottom: 12 },
+    sectionLink: { fontSize: 14, fontFamily: Fonts.bodyMedium, color: AppColors.primary },
+    emptyLine: { fontSize: 14, color: AppColors.mutedText, lineHeight: 20, fontFamily: Fonts.body },
+    moreLine: { fontSize: 13, color: AppColors.mutedText, fontFamily: Fonts.bodyMedium, marginTop: 2 },
 
     railRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
     railTime: { width: 62, paddingTop: 14, alignItems: 'flex-end' },
-    railTimeText: { fontSize: 13, fontWeight: '800', color: AppColors.primary },
+    railTimeText: { fontSize: 13, fontFamily: Fonts.bodyBold, color: AppColors.primary },
     railCard: {
         flex: 1, backgroundColor: AppColors.card, borderRadius: 14, padding: 14,
         borderWidth: 1, borderColor: AppColors.border,
     },
     railCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-    railCourse: { fontSize: 12, fontWeight: '900', color: AppColors.primary },
-    railTitle: { fontSize: 15, fontWeight: '700', color: AppColors.text, marginBottom: 5 },
+    railCourse: { fontSize: 12, fontFamily: Fonts.bodyBold, color: AppColors.primary },
+    railTitle: { fontSize: 15, fontFamily: Fonts.bodyBold, color: AppColors.text, marginBottom: 5 },
     railMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    railMeta: { fontSize: 13, color: AppColors.mutedText },
+    railMeta: { fontSize: 13, color: AppColors.mutedText, fontFamily: Fonts.body },
 
     iconRow: {
         flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: AppColors.card,
@@ -496,8 +499,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center', alignItems: 'center',
     },
     iconRowBody: { flex: 1 },
-    iconRowTitle: { fontSize: 15, fontWeight: '700', color: AppColors.text, marginBottom: 3 },
-    iconRowMeta: { fontSize: 13, color: AppColors.mutedText },
+    iconRowTitle: { fontSize: 15, fontFamily: Fonts.bodyBold, color: AppColors.text, marginBottom: 3 },
+    iconRowMeta: { fontSize: 13, color: AppColors.mutedText, fontFamily: Fonts.body },
 
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     gridItem: {
@@ -508,5 +511,5 @@ const styles = StyleSheet.create({
         width: 44, height: 44, borderRadius: 14, backgroundColor: AppColors.primary + '14',
         justifyContent: 'center', alignItems: 'center', marginBottom: 8,
     },
-    gridLabel: { fontSize: 12, fontWeight: '700', color: AppColors.text, textAlign: 'center' },
+    gridLabel: { fontSize: 12, fontFamily: Fonts.bodyMedium, color: AppColors.text, textAlign: 'center' },
 });

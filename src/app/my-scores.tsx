@@ -1,7 +1,9 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { notifyNewScores } from '@/services/notifications';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -66,8 +68,8 @@ export default function MyScoresScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.backText}>Back</Text>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                 </TouchableOpacity>
 
                 <Text style={styles.title}>Midsem Scores</Text>
@@ -119,9 +121,12 @@ const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: AppColors.background },
     container: { flex: 1, backgroundColor: AppColors.background },
     content: { padding: 20, paddingBottom: 36 },
-    backText: { color: AppColors.primary, fontSize: 15, fontWeight: '700', marginBottom: 14 },
-    title: { fontSize: 28, fontWeight: '900', color: AppColors.text },
-    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 6, marginBottom: 18, lineHeight: 20 },
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
+    },
+    title: { fontSize: 28, fontFamily: Fonts.heading, color: AppColors.text },
+    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 6, marginBottom: 18, lineHeight: 20, fontFamily: Fonts.body },
     centered: { paddingVertical: 60, alignItems: 'center' },
     emptyCard: {
         backgroundColor: AppColors.card,
@@ -130,8 +135,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: AppColors.border,
     },
-    emptyTitle: { fontSize: 18, fontWeight: '800', color: AppColors.text, marginBottom: 8 },
-    emptyText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 21 },
+    emptyTitle: { fontSize: 18, fontFamily: Fonts.headingSemi, color: AppColors.text, marginBottom: 8 },
+    emptyText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 21, fontFamily: Fonts.body },
     retryButton: {
         height: 46,
         borderRadius: 12,
@@ -140,7 +145,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 12,
     },
-    retryButtonText: { color: AppColors.card, fontSize: 15, fontWeight: '800' },
+    retryButtonText: { color: AppColors.card, fontSize: 15, fontFamily: Fonts.bodyBold },
     scoreCard: {
         backgroundColor: AppColors.card,
         borderRadius: 18,
@@ -156,18 +161,18 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         gap: 10,
     },
-    courseCode: { color: AppColors.primary, fontSize: 13, fontWeight: '900' },
+    courseCode: { color: AppColors.primary, fontSize: 13, fontFamily: Fonts.bodyBold },
     gradeBadge: {
         backgroundColor: AppColors.primary,
         color: AppColors.card,
         fontSize: 13,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
         paddingHorizontal: 12,
         paddingVertical: 4,
         borderRadius: 999,
         overflow: 'hidden',
     },
-    courseTitle: { color: AppColors.text, fontSize: 17, fontWeight: '800', marginBottom: 12 },
+    courseTitle: { color: AppColors.text, fontSize: 17, fontFamily: Fonts.headingSemi, marginBottom: 12 },
     scoreRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -180,7 +185,7 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         marginBottom: 12,
     },
-    scoreLabel: { fontSize: 13, color: AppColors.mutedText, fontWeight: '700' },
-    scoreValue: { fontSize: 18, color: AppColors.text, fontWeight: '900' },
-    meta: { fontSize: 12, color: AppColors.mutedText, fontWeight: '600' },
+    scoreLabel: { fontSize: 13, color: AppColors.mutedText, fontFamily: Fonts.bodyMedium },
+    scoreValue: { fontSize: 18, color: AppColors.text, fontFamily: Fonts.bodyBold },
+    meta: { fontSize: 12, color: AppColors.mutedText, fontFamily: Fonts.bodyMedium },
 });

@@ -1,8 +1,9 @@
 import { NavigateButton } from '@/components/navigate-button';
 import { OfflineBanner } from '@/components/offline-banner';
+import { BottomNav } from '@/components/ui/bottom-nav';
 import { StatusPill } from '@/components/ui/status-pill';
 import { AppColors } from '@/constants/colors';
-import { cardShadow } from '@/constants/ui';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { notifyCancelledClasses } from '@/services/notifications';
@@ -55,7 +56,8 @@ function getTomorrowName() {
 }
 
 export default function TimetableScreen() {
-    const { token } = useAuth();
+    const { token, role } = useAuth();
+    const isManager = role === 'course_rep' || role === 'admin';
     const [activeTab, setActiveTab] = useState<TimetableTab>('today');
     const [records, setRecords] = useState<TimetableRecord[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -141,9 +143,11 @@ export default function TimetableScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
-                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
-                </TouchableOpacity>
+                {isManager && (
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                        <Ionicons name="chevron-back" size={22} color={AppColors.text} />
+                    </TouchableOpacity>
+                )}
 
                 <Text style={styles.title}>Timetable</Text>
                 <Text style={styles.subtitle}>
@@ -229,6 +233,8 @@ export default function TimetableScreen() {
                     })
                 )}
             </ScrollView>
+
+            <BottomNav active="timetable" />
         </SafeAreaView>
     );
 }
@@ -252,7 +258,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: '800',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
@@ -261,6 +267,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 18,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     tabContainer: {
         flexDirection: 'row',
@@ -282,7 +289,7 @@ const styles = StyleSheet.create({
     },
     tabText: {
         fontSize: 14,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.mutedText,
     },
     activeTabText: {
@@ -290,7 +297,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 12,
     },
@@ -309,7 +316,7 @@ const styles = StyleSheet.create({
     },
     emptyTitle: {
         fontSize: 17,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginTop: 10,
         marginBottom: 6,
@@ -319,6 +326,7 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         lineHeight: 21,
         textAlign: 'center',
+        fontFamily: Fonts.body,
     },
     retryButton: {
         height: 46,
@@ -332,7 +340,7 @@ const styles = StyleSheet.create({
     retryButtonText: {
         color: AppColors.card,
         fontSize: 15,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     classCard: {
         backgroundColor: AppColors.card,
@@ -355,13 +363,13 @@ const styles = StyleSheet.create({
     courseCode: {
         color: AppColors.primary,
         fontSize: 13,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
         letterSpacing: 0.3,
     },
     courseTitle: {
         color: AppColors.text,
         fontSize: 17,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         marginBottom: 12,
     },
     strikethrough: {
@@ -378,6 +386,7 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         fontSize: 14,
         flex: 1,
+        fontFamily: Fonts.body,
     },
     navigateWrap: {
         marginTop: 6,

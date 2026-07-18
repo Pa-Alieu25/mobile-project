@@ -1,14 +1,17 @@
 import { OfflineBanner } from '@/components/offline-banner';
+import { BottomNav } from '@/components/ui/bottom-nav';
 import { AppColors } from '@/constants/colors';
-import { cardShadow } from '@/constants/ui';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
-import { CacheKeys, fetchWithCache } from '@/services/cache';
+import { apiRequest } from '@/services/api';
+import { CacheKeys, fetchWithCache, writeCache } from '@/services/cache';
 import { getItem, setItem } from '@/services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -25,6 +28,7 @@ type Announcement = {
     category: string;
     targetClassGroup: string;
     postedBy: string;
+    postedByUserId?: number | null;
     postedAt: string;
 };
 
@@ -51,10 +55,13 @@ function categoryStyle(category: string): { icon: keyof typeof Ionicons.glyphMap
 }
 
 export default function AnnouncementsScreen() {
-    const { token } = useAuth();
+    const { token, role } = useAuth();
+    const isManager = role === 'course_rep' || role === 'admin';
     const [activeFilter, setActiveFilter] = useState<string>('All');
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [readIds, setReadIds] = useState<Set<number>>(new Set());
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [flash, setFlash] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -94,6 +101,45 @@ export default function AnnouncementsScreen() {
         })();
     }, []);
 
+    // Load the signed-in user's id so reps see manage controls only on their own posts.
+    useEffect(() => {
+        (async () => {
+            const raw = await getItem('userId');
+            if (raw) setCurrentUserId(Number(raw));
+        })();
+    }, []);
+
+    const showFlash = (message: string) => {
+        setFlash(message);
+        setTimeout(() => setFlash(null), 2500);
+    };
+
+    const canManage = (a: Announcement) =>
+        role === 'admin' || (role === 'course_rep' && a.postedByUserId != null && a.postedByUserId === currentUserId);
+
+    const confirmDelete = (a: Announcement) => {
+        Alert.alert(
+            'Delete this announcement?',
+            'Students will no longer be able to view it. This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => handleDelete(a) },
+            ]
+        );
+    };
+
+    const handleDelete = async (a: Announcement) => {
+        try {
+            await apiRequest(`/announcements/${a.id}`, { method: 'DELETE', token });
+            const next = announcements.filter((item) => item.id !== a.id);
+            setAnnouncements(next);
+            await writeCache(CacheKeys.announcements, next); // keep offline cache in sync
+            showFlash('Announcement deleted.');
+        } catch (e) {
+            Alert.alert('Could not delete', e instanceof Error ? e.message : 'The announcement is still there. Please try again.');
+        }
+    };
+
     const filteredAnnouncements = useMemo(() => {
         if (activeFilter === 'All') return announcements;
         return announcements.filter((a) => a.category === activeFilter);
@@ -121,9 +167,11 @@ export default function AnnouncementsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
-                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
-                </TouchableOpacity>
+                {isManager && (
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                        <Ionicons name="chevron-back" size={22} color={AppColors.text} />
+                    </TouchableOpacity>
+                )}
 
                 <Text style={styles.title}>Announcements</Text>
                 <Text style={styles.subtitle}>
@@ -158,6 +206,13 @@ export default function AnnouncementsScreen() {
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
+
+                {flash && (
+                    <View style={styles.flash}>
+                        <Ionicons name="checkmark-circle" size={16} color={AppColors.success} />
+                        <Text style={styles.flashText}>{flash}</Text>
+                    </View>
+                )}
 
                 {isLoading ? (
                     <View style={styles.centered}>
@@ -203,6 +258,11 @@ export default function AnnouncementsScreen() {
                                             <Text style={styles.unreadBadgeText}>Unread</Text>
                                         </View>
                                     )}
+                                    {canManage(announcement) && (
+                                        <TouchableOpacity onPress={() => confirmDelete(announcement)} hitSlop={8} style={styles.menuButton}>
+                                            <Ionicons name="ellipsis-vertical" size={18} color={AppColors.mutedText} />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
 
                                 <Text style={styles.announcementTitle}>{announcement.title}</Text>
@@ -238,6 +298,8 @@ export default function AnnouncementsScreen() {
                     })
                 )}
             </ScrollView>
+
+            <BottomNav active="alerts" />
         </SafeAreaView>
     );
 }
@@ -261,7 +323,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: '800',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
@@ -270,6 +332,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 18,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     filterScroll: {
         marginBottom: 16,
@@ -293,7 +356,7 @@ const styles = StyleSheet.create({
     filterText: {
         color: AppColors.mutedText,
         fontSize: 13,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     activeFilterText: {
         color: AppColors.card,
@@ -313,7 +376,7 @@ const styles = StyleSheet.create({
     },
     emptyTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginTop: 10,
         marginBottom: 6,
@@ -323,6 +386,7 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         lineHeight: 21,
         textAlign: 'center',
+        fontFamily: Fonts.body,
     },
     announcementCard: {
         backgroundColor: AppColors.card,
@@ -335,11 +399,27 @@ const styles = StyleSheet.create({
     unreadCard: {
         borderColor: AppColors.primary,
     },
+    flash: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: AppColors.success + '18',
+        borderWidth: 1,
+        borderColor: AppColors.success + '40',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginBottom: 14,
+    },
+    flashText: { color: AppColors.success, fontSize: 13, fontFamily: Fonts.bodyBold },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 12,
         gap: 10,
+    },
+    menuButton: {
+        marginLeft: 2,
     },
     iconBadge: {
         width: 36, height: 36, borderRadius: 11, justifyContent: 'center', alignItems: 'center',
@@ -347,7 +427,7 @@ const styles = StyleSheet.create({
     category: {
         flex: 1,
         fontSize: 13,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     unreadBadge: {
         backgroundColor: AppColors.primary,
@@ -358,12 +438,12 @@ const styles = StyleSheet.create({
     unreadBadgeText: {
         color: AppColors.card,
         fontSize: 11,
-        fontWeight: '900',
+        fontFamily: Fonts.bodyBold,
         textTransform: 'uppercase',
     },
     announcementTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 6,
     },
@@ -371,6 +451,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 21,
+        fontFamily: Fonts.body,
     },
     targetBox: {
         backgroundColor: AppColors.background,
@@ -389,13 +470,13 @@ const styles = StyleSheet.create({
     targetLabel: {
         fontSize: 12,
         color: AppColors.mutedText,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyMedium,
         marginBottom: 2,
     },
     targetText: {
         fontSize: 14,
         color: AppColors.text,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     readButton: {
         height: 46,
@@ -410,7 +491,7 @@ const styles = StyleSheet.create({
     readButtonText: {
         color: AppColors.card,
         fontSize: 15,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     footer: {
         marginTop: 14,
@@ -431,6 +512,6 @@ const styles = StyleSheet.create({
     footerText: {
         fontSize: 12,
         color: AppColors.mutedText,
-        fontWeight: '600',
+        fontFamily: Fonts.bodyMedium,
     },
 });

@@ -56,9 +56,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/announcements", "/assignments", "/timetable",
                         "/exam-venues", "/exam-venues/bulk", "/scores")
                     .hasAnyRole("COURSE_REP", "ADMIN")
+                // Attaching a document to an assignment is rep/admin only.
+                .requestMatchers(HttpMethod.POST, "/assignments/*/document").hasAnyRole("COURSE_REP", "ADMIN")
                 // Editing/removing a class (e.g. cancelling it) is rep/admin only too.
                 .requestMatchers(HttpMethod.PUT, "/timetable/**").hasAnyRole("COURSE_REP", "ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/timetable/**").hasAnyRole("COURSE_REP", "ADMIN")
+                // Deleting posts is rep/admin only; per-record ownership is enforced in the controllers.
+                .requestMatchers(HttpMethod.DELETE, "/timetable/**", "/announcements/**", "/assignments/**")
+                    .hasAnyRole("COURSE_REP", "ADMIN")
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

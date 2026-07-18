@@ -1,10 +1,16 @@
 import { AppColors } from '@/constants/colors';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { registerForPushNotifications } from '@/services/notifications';
+import { PublicSans_400Regular, PublicSans_600SemiBold, PublicSans_700Bold } from '@expo-google-fonts/public-sans';
+import { Sora_600SemiBold, Sora_700Bold, useFonts } from '@expo-google-fonts/sora';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+
+// Keep the splash screen visible until the app fonts have loaded.
+SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { token, role, isLoading } = useAuth();
@@ -51,9 +57,8 @@ function RootNavigator() {
       <Stack.Screen name="register" />
       <Stack.Screen name="forgot-password" />
 
-      {/* Any signed-in user */}
+      {/* Any signed-in user — student and shared screens */}
       <Stack.Protected guard={isAuthenticated}>
-        {/* Student screens */}
         <Stack.Screen name="student-dashboard" />
         <Stack.Screen name="profile-settings" />
         <Stack.Screen name="paywall" />
@@ -62,8 +67,10 @@ function RootNavigator() {
         <Stack.Screen name="assignments" />
         <Stack.Screen name="exam-venue-search" />
         <Stack.Screen name="my-scores" />
+      </Stack.Protected>
 
-        {/* Course rep screens */}
+      {/* Course rep + admin management screens */}
+      <Stack.Protected guard={isAuthenticated && (role === 'course_rep' || role === 'admin')}>
         <Stack.Screen name="rep-panel" />
         <Stack.Screen name="post-announcement" />
         <Stack.Screen name="add-assignment" />
@@ -82,6 +89,26 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Sora_600SemiBold,
+    Sora_700Bold,
+    PublicSans_400Regular,
+    PublicSans_600SemiBold,
+    PublicSans_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  // Hold rendering until fonts are ready (or failed) so text doesn't flash in a
+  // system font first.
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <AuthProvider>
       <RootNavigator />

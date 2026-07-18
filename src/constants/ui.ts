@@ -17,3 +17,13 @@ export const radii = {
     md: 14,
     lg: 18,
 };
+
+// App typography. Headings use Sora, body copy uses Public Sans. These names
+// match the fonts loaded in app/_layout.tsx via @expo-google-fonts.
+export const Fonts = {
+    heading: 'Sora_700Bold',
+    headingSemi: 'Sora_600SemiBold',
+    body: 'PublicSans_400Regular',
+    bodyMedium: 'PublicSans_600SemiBold',
+    bodyBold: 'PublicSans_700Bold',
+} as const;

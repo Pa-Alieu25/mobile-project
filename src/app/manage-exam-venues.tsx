@@ -1,7 +1,9 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { parseCsv } from '@/services/csv';
+import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { File as FsFile } from 'expo-file-system';
 import { router } from 'expo-router';
@@ -182,8 +184,8 @@ export default function ManageExamVenuesScreen() {
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Text style={styles.backText}>Back</Text>
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                        <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                     </TouchableOpacity>
 
                     <Text style={styles.title}>Manage Exam Venues</Text>
@@ -219,7 +221,6 @@ export default function ManageExamVenuesScreen() {
                         <Text style={styles.label}>Course Code</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Enter course code"
                             placeholderTextColor={AppColors.mutedText}
                             value={courseCode}
                             onChangeText={setCourseCode}
@@ -229,7 +230,6 @@ export default function ManageExamVenuesScreen() {
                         <Text style={styles.label}>Course Title</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Enter course title"
                             placeholderTextColor={AppColors.mutedText}
                             value={courseTitle}
                             onChangeText={setCourseTitle}
@@ -238,7 +238,6 @@ export default function ManageExamVenuesScreen() {
                         <Text style={styles.label}>Exam Date</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Enter exam date"
                             placeholderTextColor={AppColors.mutedText}
                             value={examDate}
                             onChangeText={setExamDate}
@@ -247,7 +246,6 @@ export default function ManageExamVenuesScreen() {
                         <Text style={styles.label}>Exam Time</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Enter exam time"
                             placeholderTextColor={AppColors.mutedText}
                             value={examTime}
                             onChangeText={setExamTime}
@@ -258,7 +256,6 @@ export default function ManageExamVenuesScreen() {
                         <Text style={styles.label}>Venue</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Enter exam venue"
                             placeholderTextColor={AppColors.mutedText}
                             value={venue}
                             onChangeText={setVenue}
@@ -267,16 +264,14 @@ export default function ManageExamVenuesScreen() {
                         <Text style={styles.label}>Building / Block</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Enter building or block"
                             placeholderTextColor={AppColors.mutedText}
                             value={buildingOrBlock}
                             onChangeText={setBuildingOrBlock}
                         />
 
-                        <Text style={styles.label}>Room / Hall Optional</Text>
+                        <Text style={styles.label}>Room / Hall (optional)</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Enter room or hall if available"
                             placeholderTextColor={AppColors.mutedText}
                             value={roomOrHall}
                             onChangeText={setRoomOrHall}
@@ -293,7 +288,6 @@ export default function ManageExamVenuesScreen() {
                                 <Text style={styles.label}>Start Number</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Start"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={startNumber}
                                     onChangeText={setStartNumber}
@@ -305,7 +299,6 @@ export default function ManageExamVenuesScreen() {
                                 <Text style={styles.label}>End Number</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="End"
                                     placeholderTextColor={AppColors.mutedText}
                                     value={endNumber}
                                     onChangeText={setEndNumber}
@@ -364,14 +357,6 @@ export default function ManageExamVenuesScreen() {
                             )}
                         </TouchableOpacity>
                     </View>
-
-                    <View style={styles.noteCard}>
-                        <Text style={styles.noteTitle}>Why range entry?</Text>
-                        <Text style={styles.noteText}>
-                            One venue range covers many students at once, so you enter each exam
-                            hall only once instead of student by student.
-                        </Text>
-                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -394,15 +379,13 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 36,
     },
-    backText: {
-        color: AppColors.primary,
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 14,
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
     },
     title: {
         fontSize: 28,
-        fontWeight: '900',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
@@ -411,6 +394,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 22,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     formCard: {
         backgroundColor: AppColors.card,
@@ -418,6 +402,7 @@ const styles = StyleSheet.create({
         padding: 18,
         borderWidth: 1,
         borderColor: AppColors.border,
+        ...cardShadow,
     },
     uploadCard: {
         backgroundColor: AppColors.card,
@@ -426,6 +411,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: AppColors.border,
         marginBottom: 16,
+        ...cardShadow,
     },
     codeText: {
         fontSize: 12,
@@ -435,6 +421,7 @@ const styles = StyleSheet.create({
         padding: 10,
         marginBottom: 14,
         lineHeight: 18,
+        fontFamily: Fonts.body,
     },
     uploadButton: {
         height: 50,
@@ -446,11 +433,11 @@ const styles = StyleSheet.create({
     uploadButtonText: {
         color: AppColors.card,
         fontSize: 15,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     sectionTitle: {
         fontSize: 18,
-        fontWeight: '900',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
         marginBottom: 10,
     },
@@ -459,10 +446,11 @@ const styles = StyleSheet.create({
         color: AppColors.mutedText,
         lineHeight: 20,
         marginBottom: 16,
+        fontFamily: Fonts.body,
     },
     label: {
         fontSize: 14,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.text,
         marginBottom: 8,
     },
@@ -476,6 +464,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: AppColors.text,
         backgroundColor: AppColors.background,
+        fontFamily: Fonts.body,
     },
     rangeRow: {
         flexDirection: 'row',
@@ -506,7 +495,7 @@ const styles = StyleSheet.create({
     statusButtonText: {
         color: AppColors.mutedText,
         fontSize: 14,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     activeStatusButtonText: {
         color: AppColors.card,
@@ -554,28 +543,9 @@ const styles = StyleSheet.create({
     saveButtonText: {
         color: AppColors.card,
         fontSize: 16,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     disabledButton: {
         backgroundColor: AppColors.primaryDark,
-    },
-    noteCard: {
-        marginTop: 18,
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
-    },
-    noteTitle: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: AppColors.text,
-        marginBottom: 6,
-    },
-    noteText: {
-        fontSize: 14,
-        color: AppColors.mutedText,
-        lineHeight: 20,
     },
 });

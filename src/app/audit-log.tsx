@@ -1,6 +1,8 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -68,8 +70,8 @@ export default function AuditLogScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
                 }
             >
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.backText}>Back</Text>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+                    <Ionicons name="chevron-back" size={22} color={AppColors.text} />
                 </TouchableOpacity>
 
                 <Text style={styles.title}>Activity log</Text>
@@ -116,9 +118,12 @@ const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: AppColors.background },
     container: { flex: 1, backgroundColor: AppColors.background },
     content: { padding: 20, paddingBottom: 36 },
-    backText: { color: AppColors.primary, fontSize: 15, fontWeight: '700', marginBottom: 14 },
-    title: { fontSize: 28, fontWeight: '900', color: AppColors.text },
-    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 6, marginBottom: 18, lineHeight: 20 },
+    backButton: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center', marginBottom: 14,
+    },
+    title: { fontSize: 28, fontFamily: Fonts.heading, color: AppColors.text },
+    subtitle: { fontSize: 14, color: AppColors.mutedText, marginTop: 6, marginBottom: 18, lineHeight: 20, fontFamily: Fonts.body },
     centered: { paddingVertical: 60, alignItems: 'center' },
     emptyCard: {
         backgroundColor: AppColors.card,
@@ -127,8 +132,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: AppColors.border,
     },
-    emptyTitle: { fontSize: 18, fontWeight: '800', color: AppColors.text, marginBottom: 8 },
-    emptyText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 21 },
+    emptyTitle: { fontSize: 18, fontFamily: Fonts.headingSemi, color: AppColors.text, marginBottom: 8 },
+    emptyText: { fontSize: 14, color: AppColors.mutedText, lineHeight: 21, fontFamily: Fonts.body },
     retryButton: {
         height: 46,
         borderRadius: 12,
@@ -137,7 +142,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 12,
     },
-    retryButtonText: { color: AppColors.card, fontSize: 15, fontWeight: '800' },
+    retryButtonText: { color: AppColors.card, fontSize: 15, fontFamily: Fonts.bodyBold },
     row: {
         backgroundColor: AppColors.card,
         borderRadius: 14,
@@ -153,8 +158,8 @@ const styles = StyleSheet.create({
         marginBottom: 4,
         gap: 10,
     },
-    action: { fontSize: 14, fontWeight: '800', color: AppColors.primary, flexShrink: 1 },
-    time: { fontSize: 12, color: AppColors.mutedText },
-    detail: { fontSize: 14, color: AppColors.text, marginBottom: 4 },
-    actor: { fontSize: 12, color: AppColors.mutedText, fontWeight: '600' },
+    action: { fontSize: 14, fontFamily: Fonts.bodyBold, color: AppColors.primary, flexShrink: 1 },
+    time: { fontSize: 12, color: AppColors.mutedText, fontFamily: Fonts.body },
+    detail: { fontSize: 14, color: AppColors.text, marginBottom: 4, fontFamily: Fonts.body },
+    actor: { fontSize: 12, color: AppColors.mutedText, fontFamily: Fonts.bodyMedium },
 });

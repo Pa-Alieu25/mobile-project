@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/colors';
+import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { router } from 'expo-router';
@@ -64,11 +65,13 @@ export default function RepPanel() {
 
     const actions = [
         { title: 'Post Announcement', text: 'Share class updates, cancellations, and reminders.', route: '/post-announcement' },
+        { title: 'View Announcements', text: 'Open your announcements to review or delete a post.', route: '/announcements' },
+        { title: 'Add Assignment', text: 'Record assignment details, due dates, and documents.', route: '/add-assignment' },
+        { title: 'View Assignments', text: 'Open the assignment list to review or delete a post.', route: '/assignments' },
         { title: 'Manage Timetable', text: 'Add or update class times, lecturers, and venues.', route: '/manage-timetable' },
-        { title: 'Add Assignment', text: 'Record assignment details, due dates, and instructions.', route: '/add-assignment' },
         { title: 'Upload Exam Venue Info', text: 'Add exam venue ranges so students can search them.', route: '/manage-exam-venues' },
         { title: 'Upload Midsem Score', text: 'Post a student’s midsem score by index number.', route: '/upload-score' },
-        { title: 'Profile & Settings', text: 'Manage reminders, sync, and account settings.', route: '/profile-settings' },
+        { title: 'Profile & Settings', text: 'Manage reminders, offline access, and account settings.', route: '/profile-settings' },
     ];
 
     return (
@@ -166,13 +169,14 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 26,
-        fontWeight: '800',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     subtitle: {
         fontSize: 14,
         color: AppColors.mutedText,
         marginTop: 4,
+        fontFamily: Fonts.body,
     },
     signOutButton: {
         paddingHorizontal: 12,
@@ -184,7 +188,7 @@ const styles = StyleSheet.create({
     },
     signOutText: {
         color: AppColors.primary,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyMedium,
         fontSize: 13,
     },
     loadingCard: {
@@ -206,13 +210,13 @@ const styles = StyleSheet.create({
     },
     statValue: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.text,
     },
     statLabel: {
         fontSize: 11,
         color: AppColors.mutedText,
-        fontWeight: '600',
+        fontFamily: Fonts.bodyMedium,
         marginTop: 3,
         textAlign: 'center',
     },
@@ -221,7 +225,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 10,
     },
@@ -237,7 +241,7 @@ const styles = StyleSheet.create({
         backgroundColor: AppColors.background,
         color: AppColors.primary,
         fontSize: 12,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 12,
@@ -246,17 +250,18 @@ const styles = StyleSheet.create({
     },
     announcementTitle: {
         fontSize: 16,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 6,
     },
     announcementMeta: {
         fontSize: 13,
         color: AppColors.mutedText,
+        fontFamily: Fonts.body,
     },
     emptyTitle: {
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.text,
         marginBottom: 6,
     },
@@ -264,6 +269,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
     actionList: {
         gap: 12,
@@ -277,7 +283,7 @@ const styles = StyleSheet.create({
     },
     actionTitle: {
         fontSize: 16,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.primary,
         marginBottom: 4,
     },
@@ -285,5 +291,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: AppColors.mutedText,
         lineHeight: 20,
+        fontFamily: Fonts.body,
     },
 });

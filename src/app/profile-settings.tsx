@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,7 +13,9 @@ import {
     View,
 } from 'react-native';
 
+import { BottomNav } from '../components/ui/bottom-nav';
 import { AppColors } from '../constants/colors';
+import { Fonts } from '../constants/ui';
 import { useAuth } from '../context/auth-context';
 import {
     cancelAllReminders,
@@ -87,13 +90,6 @@ export default function ProfileSettingsScreen() {
         router.replace('/');
     }
 
-    function handleManualSync() {
-        Alert.alert(
-            'Sync not connected yet',
-            'Manual sync will be connected when the Spring Boot backend is ready.'
-        );
-    }
-
     function handleSubscription() {
         router.push('/paywall' as any);
     }
@@ -121,17 +117,21 @@ export default function ProfileSettingsScreen() {
         }
     }
 
+    const isManager = role === 'course_rep' || role === 'admin';
+
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView contentContainerStyle={styles.container}>
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <Text style={styles.backText}>Back</Text>
-                    </TouchableOpacity>
+                    {isManager && (
+                        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
+                            <Ionicons name="chevron-back" size={22} color={AppColors.text} />
+                        </TouchableOpacity>
+                    )}
 
                     <Text style={styles.headerTitle}>Profile & Settings</Text>
                     <Text style={styles.headerSubtitle}>
-                        Manage your academic profile, reminders, sync, and subscription status.
+                        Manage your academic profile, reminders, and subscription status.
                     </Text>
                 </View>
 
@@ -197,16 +197,11 @@ export default function ProfileSettingsScreen() {
                 </View>
 
                 <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Sync & Offline Access</Text>
-                    <Text style={styles.description}>
-                        KNUST ClassMate will store important academic data locally so students can still
-                        access timetable, announcements, assignments, and exam venue information when
-                        internet connection is poor.
+                    <Text style={styles.sectionTitle}>Offline Access</Text>
+                    <Text style={[styles.description, { marginBottom: 0 }]}>
+                        Your timetable, announcements, assignments, and exam venues are saved on this
+                        device automatically, so you can still open them when you&apos;re offline.
                     </Text>
-
-                    <TouchableOpacity style={styles.primaryButton} onPress={handleManualSync}>
-                        <Text style={styles.primaryButtonText}>Manual Sync</Text>
-                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.card}>
@@ -237,6 +232,8 @@ export default function ProfileSettingsScreen() {
                     <Text style={styles.dangerButtonText}>Sign Out</Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            <BottomNav active="profile" />
         </SafeAreaView>
     );
 }
@@ -286,14 +283,12 @@ const styles = StyleSheet.create({
     backButton: {
         alignSelf: 'flex-start',
         marginBottom: 12,
-    },
-    backText: {
-        color: AppColors.primary,
-        fontWeight: '700',
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.card,
+        borderWidth: 1, borderColor: AppColors.border, justifyContent: 'center', alignItems: 'center',
     },
     headerTitle: {
         fontSize: 26,
-        fontWeight: '800',
+        fontFamily: Fonts.heading,
         color: AppColors.text,
     },
     headerSubtitle: {
@@ -301,6 +296,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 20,
         color: AppColors.mutedText,
+        fontFamily: Fonts.body,
     },
     card: {
         backgroundColor: AppColors.card,
@@ -312,7 +308,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 18,
-        fontWeight: '800',
+        fontFamily: Fonts.headingSemi,
         color: AppColors.text,
         marginBottom: 14,
     },
@@ -323,10 +319,11 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: AppColors.mutedText,
         marginBottom: 3,
+        fontFamily: Fonts.body,
     },
     value: {
         fontSize: 15,
-        fontWeight: '600',
+        fontFamily: Fonts.bodyMedium,
         color: AppColors.text,
     },
     roleBadge: {
@@ -338,7 +335,7 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         overflow: 'hidden',
         fontSize: 12,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         textTransform: 'uppercase',
     },
     settingRow: {
@@ -355,7 +352,7 @@ const styles = StyleSheet.create({
     },
     settingTitle: {
         fontSize: 15,
-        fontWeight: '700',
+        fontFamily: Fonts.bodyBold,
         color: AppColors.text,
     },
     settingDescription: {
@@ -363,12 +360,14 @@ const styles = StyleSheet.create({
         fontSize: 12,
         lineHeight: 18,
         color: AppColors.mutedText,
+        fontFamily: Fonts.body,
     },
     description: {
         fontSize: 14,
         lineHeight: 21,
         color: AppColors.mutedText,
         marginBottom: 14,
+        fontFamily: Fonts.body,
     },
     primaryButton: {
         backgroundColor: AppColors.primary,
@@ -378,7 +377,7 @@ const styles = StyleSheet.create({
     },
     primaryButtonText: {
         color: AppColors.card,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     outlineButton: {
         borderWidth: 1,
@@ -389,7 +388,7 @@ const styles = StyleSheet.create({
     },
     outlineButtonText: {
         color: AppColors.primary,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
     proBadge: {
         alignSelf: 'flex-start',
@@ -400,7 +399,7 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         overflow: 'hidden',
         fontSize: 12,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
         marginBottom: 10,
     },
     dangerButton: {
@@ -412,6 +411,6 @@ const styles = StyleSheet.create({
     },
     dangerButtonText: {
         color: AppColors.card,
-        fontWeight: '800',
+        fontFamily: Fonts.bodyBold,
     },
 });
