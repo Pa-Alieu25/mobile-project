@@ -90,15 +90,26 @@ export async function openAssignmentDocument(
         return;
     }
 
+    // Sharing is a native module; a dev client built before expo-sharing was added
+    // throws "Cannot find native module 'ExpoSharing'". Check first and give a clear
+    // message instead of downloading a file the app then can't open.
+    let canShare = false;
+    try {
+        canShare = await Sharing.isAvailableAsync();
+    } catch {
+        canShare = false;
+    }
+    if (!canShare) {
+        throw new Error('Opening documents needs an updated app build. Ask the team to rebuild the development client.');
+    }
+
     const safeName = fileName.replace(/[^\w.\-]+/g, '_') || 'assignment-document';
     const target = (FileSystem.cacheDirectory ?? '') + safeName;
     const result = await FileSystem.downloadAsync(url, target, { headers: authHeaders });
     if (result.status !== 200) {
         throw new Error('Could not download the document. Please try again.');
     }
-    if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(result.uri);
-    }
+    await Sharing.shareAsync(result.uri);
 }
 
 /** Human-readable file size, e.g. "1.4 MB". */
