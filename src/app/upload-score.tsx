@@ -2,10 +2,9 @@ import { AppColors } from '@/constants/colors';
 import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
-import { parseCsv } from '@/services/csv';
+import { parseTabularFile } from '@/services/spreadsheet';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { File as FsFile } from 'expo-file-system';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -60,18 +59,18 @@ export default function UploadScoreScreen() {
     const pickScoreFile = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
-                type: ['text/csv', 'text/comma-separated-values', 'application/vnd.ms-excel', 'text/plain'],
+                type: [
+                    'text/csv', 'text/comma-separated-values', 'text/plain',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ],
                 copyToCacheDirectory: true,
             });
             if (result.canceled) return;
             const asset = result.assets[0];
-            const text = Platform.OS === 'web'
-                ? await (await fetch(asset.uri)).text()
-                : await new FsFile(asset.uri).text();
-
-            const records = parseCsv(text);
+            const records = await parseTabularFile(asset.uri, asset.name);
             if (records.length === 0) {
-                Alert.alert('Empty or invalid file', 'The CSV needs a header row and at least one row of data.');
+                Alert.alert('Empty or invalid file', 'The file needs a header row and at least one row of data.');
                 return;
             }
 
@@ -92,7 +91,7 @@ export default function UploadScoreScreen() {
             setCsvSkipped(skipped);
             setCsvFileName(asset.name);
         } catch (e) {
-            Alert.alert('Could not read file', e instanceof Error ? e.message : 'Please choose a valid CSV file.');
+            Alert.alert('Could not read file', e instanceof Error ? e.message : 'Please choose a valid CSV, XLS or XLSX file.');
         }
     };
 
@@ -241,8 +240,8 @@ export default function UploadScoreScreen() {
                     <View style={styles.bulkCard}>
                         <Text style={styles.sectionTitle}>Bulk upload from a file</Text>
                         <Text style={styles.bulkHint}>
-                            Upload a CSV with a header row to publish many scores at once, using the course code and
-                            title above. Students can be identified by index or reference number.
+                            Upload a CSV, XLS or XLSX file with a header row to publish many scores at once, using the
+                            course code and title above. Students can be identified by index or reference number.
                         </Text>
                         <Text style={styles.codeText}>identifier, score, grade</Text>
 
@@ -286,7 +285,7 @@ export default function UploadScoreScreen() {
                         ) : (
                             <TouchableOpacity style={styles.attachButton} onPress={pickScoreFile}>
                                 <Ionicons name="cloud-upload-outline" size={18} color={AppColors.primary} />
-                                <Text style={styles.attachButtonText}>Choose CSV file</Text>
+                                <Text style={styles.attachButtonText}>Choose file (CSV, XLS, XLSX)</Text>
                             </TouchableOpacity>
                         )}
                     </View>
