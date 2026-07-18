@@ -54,7 +54,8 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 // Only course reps and admins can create academic records; students are read-only.
                 .requestMatchers(HttpMethod.POST, "/announcements", "/assignments", "/timetable",
-                        "/exam-venues", "/exam-venues/bulk", "/scores")
+                        "/exam-venues", "/exam-venues/bulk", "/scores", "/scores/bulk",
+                        "/timetable/document")
                     .hasAnyRole("COURSE_REP", "ADMIN")
                 // Attaching a document to an assignment is rep/admin only.
                 .requestMatchers(HttpMethod.POST, "/assignments/*/document").hasAnyRole("COURSE_REP", "ADMIN")
