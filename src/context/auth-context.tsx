@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { clearCachedData } from '@/services/cache';
 import { deleteItem, getItem, setItem } from '@/services/storage';
 
 export type UserRole = 'student' | 'course_rep' | 'admin';
@@ -38,6 +39,15 @@ const SESSION_KEYS = [
     'referenceNumber',
     'programme',
     'level',
+] as const;
+
+// Per-student state that must not leak to the next person who signs in on the
+// same device (assignment completion, announcement reads, notification dedupe).
+const PRIVATE_STATE_KEYS = [
+    'completedAssignmentIds',
+    'readAnnouncementIds',
+    'seenScoreIds',
+    'alertedCancelledClassIds',
 ] as const;
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -91,6 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             for (const key of SESSION_KEYS) {
                 await deleteItem(key);
             }
+            // Clear private per-student state + cached class data so the next
+            // person to sign in on this device starts clean.
+            for (const key of PRIVATE_STATE_KEYS) {
+                await deleteItem(key);
+            }
+            await clearCachedData();
             setToken(null);
             setRole(null);
         },

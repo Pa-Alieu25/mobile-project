@@ -12,6 +12,7 @@ public record RegisterRequest(
     @NotBlank String programme,
     @NotBlank String level,
     String classGroup,
-    @NotBlank @Size(min = 6) String password,
-    String role
+    @NotBlank @Size(min = 6) String password
+    // No role field: public registration is always STUDENT (set server-side in
+    // AuthService). Accepting a role here would be a privilege-escalation vector.
 ) {}
