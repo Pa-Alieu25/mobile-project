@@ -11,12 +11,12 @@ export type PickedDocument = {
 };
 
 /**
- * Upload a picked document to an assignment as multipart/form-data. Uses
- * XMLHttpRequest so we can report determinate upload progress on both native
- * and web. Resolves on success, rejects with a user-facing message otherwise.
+ * Upload a picked document to a backend path as multipart/form-data. Uses
+ * XMLHttpRequest so we can report determinate upload progress on both native and
+ * web. Resolves on success, rejects with a user-facing message otherwise.
  */
-export function uploadAssignmentDocument(
-    assignmentId: number,
+function uploadToPath(
+    path: string,
     file: PickedDocument,
     token: string | null,
     onProgress?: (fraction: number) => void
@@ -31,7 +31,7 @@ export function uploadAssignmentDocument(
         } as unknown as Blob);
 
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${API_BASE_URL}/assignments/${assignmentId}/document`);
+        xhr.open('POST', `${API_BASE_URL}${path}`);
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
         if (xhr.upload) {
@@ -62,15 +62,11 @@ export function uploadAssignmentDocument(
 }
 
 /**
- * Download an assignment's document (authenticated) and hand it to the OS so the
- * student can open or save it. On web it triggers a browser download instead.
+ * Download an authenticated document from a backend path and hand it to the OS so
+ * the user can open or save it. On web it triggers a browser download instead.
  */
-export async function openAssignmentDocument(
-    assignmentId: number,
-    fileName: string,
-    token: string | null
-): Promise<void> {
-    const url = `${API_BASE_URL}/assignments/${assignmentId}/document`;
+async function openFromPath(path: string, fileName: string, token: string | null): Promise<void> {
+    const url = `${API_BASE_URL}${path}`;
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     if (Platform.OS === 'web') {
@@ -103,13 +99,49 @@ export async function openAssignmentDocument(
         throw new Error('Opening documents needs an updated app build. Ask the team to rebuild the development client.');
     }
 
-    const safeName = fileName.replace(/[^\w.\-]+/g, '_') || 'assignment-document';
+    const safeName = fileName.replace(/[^\w.\-]+/g, '_') || 'document';
     const target = (FileSystem.cacheDirectory ?? '') + safeName;
     const result = await FileSystem.downloadAsync(url, target, { headers: authHeaders });
     if (result.status !== 200) {
         throw new Error('Could not download the document. Please try again.');
     }
     await Sharing.shareAsync(result.uri);
+}
+
+// ── Assignment documents ────────────────────────────────────────────────────
+export function uploadAssignmentDocument(
+    assignmentId: number,
+    file: PickedDocument,
+    token: string | null,
+    onProgress?: (fraction: number) => void
+): Promise<void> {
+    return uploadToPath(`/assignments/${assignmentId}/document`, file, token, onProgress);
+}
+
+export function openAssignmentDocument(assignmentId: number, fileName: string, token: string | null): Promise<void> {
+    return openFromPath(`/assignments/${assignmentId}/document`, fileName, token);
+}
+
+// ── Timetable documents (official timetable file) ───────────────────────────
+export type TimetableDocumentMeta = {
+    id: number;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    uploadedBy: string;
+    uploadedAt: string;
+};
+
+export function uploadTimetableDocument(
+    file: PickedDocument,
+    token: string | null,
+    onProgress?: (fraction: number) => void
+): Promise<void> {
+    return uploadToPath('/timetable/document', file, token, onProgress);
+}
+
+export function openTimetableDocument(documentId: number, fileName: string, token: string | null): Promise<void> {
+    return openFromPath(`/timetable/document/${documentId}`, fileName, token);
 }
 
 /** Human-readable file size, e.g. "1.4 MB". */

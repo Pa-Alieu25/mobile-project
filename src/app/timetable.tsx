@@ -5,13 +5,16 @@ import { StatusPill } from '@/components/ui/status-pill';
 import { AppColors } from '@/constants/colors';
 import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
+import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
+import { formatFileSize, openTimetableDocument, type TimetableDocumentMeta } from '@/services/documents';
 import { notifyCancelledClasses } from '@/services/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -64,9 +67,35 @@ export default function TimetableScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isOffline, setIsOffline] = useState(false);
+    const [timetableDoc, setTimetableDoc] = useState<TimetableDocumentMeta | null>(null);
+    const [openingDoc, setOpeningDoc] = useState(false);
 
     const todayName = getTodayName();
     const tomorrowName = getTomorrowName();
+
+    // Load the latest official timetable document (metadata only), if any.
+    useEffect(() => {
+        (async () => {
+            try {
+                const docs = await apiRequest<TimetableDocumentMeta[]>('/timetable/document', { token });
+                setTimetableDoc(docs[0] ?? null);
+            } catch {
+                // Offline or none uploaded — the card just doesn't show.
+            }
+        })();
+    }, [token]);
+
+    const handleOpenDoc = async () => {
+        if (!timetableDoc) return;
+        try {
+            setOpeningDoc(true);
+            await openTimetableDocument(timetableDoc.id, timetableDoc.originalName, token);
+        } catch (e) {
+            Alert.alert('Could not open document', e instanceof Error ? e.message : 'Please try again.');
+        } finally {
+            setOpeningDoc(false);
+        }
+    };
 
     const loadTimetable = useCallback(async () => {
         try {
@@ -155,6 +184,25 @@ export default function TimetableScreen() {
                 </Text>
 
                 {isOffline && <OfflineBanner />}
+
+                {timetableDoc && (
+                    <TouchableOpacity style={styles.docCard} onPress={handleOpenDoc} disabled={openingDoc}>
+                        <View style={styles.docIcon}>
+                            <Ionicons name="document-text" size={20} color={AppColors.primary} />
+                        </View>
+                        <View style={styles.docBody}>
+                            <Text style={styles.docTitle}>Official timetable</Text>
+                            <Text style={styles.docMeta} numberOfLines={1}>
+                                {timetableDoc.originalName}{timetableDoc.size ? ` · ${formatFileSize(timetableDoc.size)}` : ''}
+                            </Text>
+                        </View>
+                        {openingDoc ? (
+                            <ActivityIndicator size="small" color={AppColors.primary} />
+                        ) : (
+                            <Ionicons name="download-outline" size={22} color={AppColors.primary} />
+                        )}
+                    </TouchableOpacity>
+                )}
 
                 <View style={styles.tabContainer}>
                     {tabs.map((tab) => (
@@ -269,6 +317,25 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         fontFamily: Fonts.body,
     },
+    docCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: AppColors.card,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: AppColors.primary + '33',
+        padding: 14,
+        marginBottom: 16,
+        ...cardShadow,
+    },
+    docIcon: {
+        width: 40, height: 40, borderRadius: 12, backgroundColor: AppColors.primary + '14',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    docBody: { flex: 1 },
+    docTitle: { fontSize: 15, fontFamily: Fonts.bodyBold, color: AppColors.text },
+    docMeta: { fontSize: 12, color: AppColors.mutedText, marginTop: 2, fontFamily: Fonts.body },
     tabContainer: {
         flexDirection: 'row',
         backgroundColor: AppColors.card,
