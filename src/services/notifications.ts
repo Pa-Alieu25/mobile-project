@@ -13,19 +13,25 @@ const ANDROID_CHANNEL_ID = 'class-reminders';
 const DEFAULT_MINUTES_BEFORE = 30;
 const WEEK_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+// expo-notifications' scheduling/permission APIs are native-only. On web they
+// throw ("...is not available on web"), so every entry point below no-ops on web.
+const IS_WEB = Platform.OS === 'web';
+
 function androidChannel(): string | undefined {
     return Platform.OS === 'android' ? ANDROID_CHANNEL_ID : undefined;
 }
 
-// Show the notification even when the app is foregrounded.
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-    }),
-});
+// Show the notification even when the app is foregrounded (native only).
+if (!IS_WEB) {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowBanner: true,
+            shouldShowList: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+        }),
+    });
+}
 
 export type ReminderClass = {
     id: number;
@@ -40,6 +46,7 @@ export type ReminderClass = {
 // Ensures the Android channel exists and permission is granted. Returns whether
 // notifications are allowed.
 export async function ensureNotificationPermissions(): Promise<boolean> {
+    if (IS_WEB) return false;
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
             name: 'Class reminders',
@@ -136,6 +143,7 @@ async function scheduleNightSummary(timetable: ReminderClass[]): Promise<void> {
 // user's toggles. Call this whenever the timetable loads. Clears existing
 // scheduled notifications first so nothing is duplicated.
 export async function syncReminders(timetable: ReminderClass[]): Promise<void> {
+    if (IS_WEB) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
 
     const perms = await Notifications.getPermissionsAsync();
@@ -160,6 +168,7 @@ export async function syncReminders(timetable: ReminderClass[]): Promise<void> {
 }
 
 export async function cancelAllReminders(): Promise<void> {
+    if (IS_WEB) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
@@ -168,6 +177,7 @@ export async function cancelAllReminders(): Promise<void> {
 // in Expo Go / without a development build, where getExpoPushTokenAsync is not
 // available — it fails quietly and the app keeps working.
 export async function registerForPushNotifications(authToken: string | null): Promise<void> {
+    if (IS_WEB) return;
     try {
         const granted = await ensureNotificationPermissions();
         if (!granted) return;
@@ -189,6 +199,7 @@ export async function registerForPushNotifications(authToken: string | null): Pr
 // True only when the user has enabled class reminders AND granted permission.
 // Used by screens to decide whether to (re)schedule without prompting.
 export async function classRemindersActive(): Promise<boolean> {
+    if (IS_WEB) return false;
     if ((await getItem(CLASS_REMINDERS_ENABLED_KEY)) === 'false') return false;
     const perms = await Notifications.getPermissionsAsync();
     return perms.granted;
@@ -203,6 +214,7 @@ export type ScoreNotice = { id: number; courseCode: string };
 // notifies when permission is already granted (never prompts here). This is the
 // on-device stand-in for the personalized push alert until remote push is set up.
 export async function notifyNewScores(scores: ScoreNotice[]): Promise<void> {
+    if (IS_WEB) return;
     const raw = await getItem(SEEN_SCORE_IDS_KEY);
     let seen: number[] = [];
     if (raw) {
@@ -248,6 +260,7 @@ export type CancelledClassNotice = { id: number; courseCode: string; dayOfWeek: 
 // been alerted about yet. Same on-device approach as scores: only when
 // permission is already granted, and each cancellation alerts once.
 export async function notifyCancelledClasses(cancelled: CancelledClassNotice[]): Promise<void> {
+    if (IS_WEB) return;
     const raw = await getItem(ALERTED_CANCELLED_KEY);
     let alerted: number[] = [];
     if (raw) {
