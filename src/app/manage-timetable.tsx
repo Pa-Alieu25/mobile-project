@@ -2,7 +2,15 @@ import { AppColors } from '@/constants/colors';
 import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
+import {
+    formatFileSize,
+    openTimetableDocument,
+    uploadTimetableDocument,
+    type PickedDocument,
+    type TimetableDocumentMeta,
+} from '@/services/documents';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -47,11 +55,30 @@ function statusLabel(status: string) {
     return 'Active';
 }
 
+const DOCUMENT_MIME_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/csv',
+    'text/comma-separated-values',
+];
+
+function fileExtensionLabel(name: string): string {
+    const dot = name.lastIndexOf('.');
+    return dot >= 0 ? name.slice(dot + 1).toUpperCase() : 'FILE';
+}
+
 export default function ManageTimetableScreen() {
     const { token } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [existingClasses, setExistingClasses] = useState<TimetableRecord[]>([]);
     const [isLoadingList, setIsLoadingList] = useState(true);
+
+    const [timetableDocs, setTimetableDocs] = useState<TimetableDocumentMeta[]>([]);
+    const [pickedDoc, setPickedDoc] = useState<PickedDocument | null>(null);
+    const [docProgress, setDocProgress] = useState<number | null>(null);
 
     const [courseCode, setCourseCode] = useState('');
     const [courseTitle, setCourseTitle] = useState('');
@@ -94,9 +121,70 @@ export default function ManageTimetableScreen() {
         }
     }, [token]);
 
+    const loadDocs = useCallback(async () => {
+        try {
+            setTimetableDocs(await apiRequest<TimetableDocumentMeta[]>('/timetable/document', { token }));
+        } catch {
+            // ignore; the section just shows no document
+        }
+    }, [token]);
+
     useEffect(() => {
         loadClasses();
-    }, [loadClasses]);
+        loadDocs();
+    }, [loadClasses, loadDocs]);
+
+    const pickTimetableDoc = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({ type: DOCUMENT_MIME_TYPES, copyToCacheDirectory: true });
+            if (result.canceled) return;
+            const asset = result.assets[0];
+            setPickedDoc({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType, size: asset.size });
+        } catch {
+            Alert.alert('Could not open files', 'Something went wrong while choosing a document. Please try again.');
+        }
+    };
+
+    const handleUploadDoc = async () => {
+        if (!pickedDoc) return;
+        try {
+            setDocProgress(0);
+            await uploadTimetableDocument(pickedDoc, token, setDocProgress);
+            setPickedDoc(null);
+            await loadDocs();
+            Alert.alert('Timetable uploaded', 'Students can now open the official timetable document.');
+        } catch (e) {
+            Alert.alert('Upload failed', e instanceof Error ? e.message : 'Please try again.');
+        } finally {
+            setDocProgress(null);
+        }
+    };
+
+    const handleOpenDoc = async (doc: TimetableDocumentMeta) => {
+        try {
+            await openTimetableDocument(doc.id, doc.originalName, token);
+        } catch (e) {
+            Alert.alert('Could not open document', e instanceof Error ? e.message : 'Please try again.');
+        }
+    };
+
+    const handleDeleteDoc = (doc: TimetableDocumentMeta) => {
+        Alert.alert('Delete this timetable document?', 'Students will no longer be able to open it. This action cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await apiRequest(`/timetable/document/${doc.id}`, { method: 'DELETE', token });
+                        await loadDocs();
+                    } catch (e) {
+                        Alert.alert('Could not delete', e instanceof Error ? e.message : 'Please try again.');
+                    }
+                },
+            },
+        ]);
+    };
 
     const setClassStatus = async (id: number, newStatus: string) => {
         try {
@@ -430,6 +518,68 @@ export default function ManageTimetableScreen() {
                         </TouchableOpacity>
                     </View>
 
+                    <View style={styles.docCard}>
+                        <Text style={styles.sectionTitle}>Official timetable document</Text>
+                        <Text style={styles.docHint}>
+                            Upload the full timetable (PDF, DOC, DOCX, XLS, XLSX, CSV) for students to open. The manual
+                            class records above still drive live status changes.
+                        </Text>
+
+                        {timetableDocs.map((doc) => (
+                            <View key={doc.id} style={styles.docRow}>
+                                <View style={styles.docRowIcon}>
+                                    <Ionicons name="document-text" size={18} color={AppColors.primary} />
+                                </View>
+                                <TouchableOpacity style={styles.docRowBody} onPress={() => handleOpenDoc(doc)}>
+                                    <Text style={styles.docRowName} numberOfLines={1}>{doc.originalName}</Text>
+                                    <Text style={styles.docRowMeta}>
+                                        {fileExtensionLabel(doc.originalName)}{doc.size ? ` · ${formatFileSize(doc.size)}` : ''} · {doc.uploadedAt}
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleDeleteDoc(doc)} hitSlop={8}>
+                                    <Ionicons name="trash-outline" size={18} color={AppColors.danger} />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+
+                        {pickedDoc ? (
+                            <View style={styles.docPicked}>
+                                <Ionicons name="document-attach" size={18} color={AppColors.primary} />
+                                <View style={styles.docRowBody}>
+                                    <Text style={styles.docRowName} numberOfLines={1}>{pickedDoc.name}</Text>
+                                    <Text style={styles.docRowMeta}>
+                                        {fileExtensionLabel(pickedDoc.name)}{pickedDoc.size ? ` · ${formatFileSize(pickedDoc.size)}` : ''}
+                                    </Text>
+                                </View>
+                                {docProgress === null && (
+                                    <TouchableOpacity onPress={() => setPickedDoc(null)} hitSlop={8}>
+                                        <Ionicons name="close-circle" size={20} color={AppColors.mutedText} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        ) : (
+                            <TouchableOpacity style={styles.attachButton} onPress={pickTimetableDoc}>
+                                <Ionicons name="cloud-upload-outline" size={18} color={AppColors.primary} />
+                                <Text style={styles.attachButtonText}>Choose Document</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {docProgress !== null && (
+                            <View style={styles.progressWrap}>
+                                <View style={styles.progressTrack}>
+                                    <View style={[styles.progressFill, { width: `${Math.round(docProgress * 100)}%` }]} />
+                                </View>
+                                <Text style={styles.progressText}>Uploading… {Math.round(docProgress * 100)}%</Text>
+                            </View>
+                        )}
+
+                        {pickedDoc && docProgress === null && (
+                            <TouchableOpacity style={styles.uploadDocButton} onPress={handleUploadDoc}>
+                                <Text style={styles.uploadDocButtonText}>Upload timetable</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
                     <View style={styles.listSection}>
                         <Text style={styles.sectionTitle}>Existing classes</Text>
 
@@ -666,6 +816,73 @@ const styles = StyleSheet.create({
     disabledButton: {
         backgroundColor: AppColors.primaryDark,
     },
+    docCard: {
+        backgroundColor: AppColors.card,
+        borderRadius: 18,
+        padding: 18,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        marginTop: 18,
+        ...cardShadow,
+    },
+    docHint: {
+        fontSize: 13,
+        color: AppColors.mutedText,
+        lineHeight: 19,
+        marginBottom: 14,
+        marginTop: 2,
+        fontFamily: Fonts.body,
+    },
+    docRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        backgroundColor: AppColors.background,
+        marginBottom: 12,
+    },
+    docRowIcon: {
+        width: 38, height: 38, borderRadius: 11, backgroundColor: AppColors.primary + '14',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    docRowBody: { flex: 1 },
+    docRowName: { fontSize: 14, fontFamily: Fonts.bodyBold, color: AppColors.text },
+    docRowMeta: { fontSize: 12, color: AppColors.mutedText, marginTop: 2, fontFamily: Fonts.body },
+    docPicked: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        backgroundColor: AppColors.background,
+    },
+    attachButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        height: 50,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: AppColors.primary,
+        borderStyle: 'dashed',
+        backgroundColor: AppColors.primary + '0D',
+    },
+    attachButtonText: { color: AppColors.primary, fontSize: 15, fontFamily: Fonts.bodyBold },
+    progressWrap: { marginTop: 14 },
+    progressTrack: { height: 8, borderRadius: 4, backgroundColor: AppColors.border, overflow: 'hidden' },
+    progressFill: { height: 8, borderRadius: 4, backgroundColor: AppColors.primary },
+    progressText: { fontSize: 12, color: AppColors.mutedText, marginTop: 6, fontFamily: Fonts.bodyMedium },
+    uploadDocButton: {
+        height: 50, borderRadius: 12, backgroundColor: AppColors.primary,
+        justifyContent: 'center', alignItems: 'center', marginTop: 14,
+    },
+    uploadDocButtonText: { color: AppColors.card, fontSize: 15, fontFamily: Fonts.bodyBold },
     listSection: {
         marginTop: 18,
     },
