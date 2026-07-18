@@ -52,3 +52,13 @@ export const CacheKeys = {
     assignments: 'cache:assignments',
     examVenues: 'cache:examVenues',
 } as const;
+
+/** Remove all cached academic data. Called on sign-out so a shared device does
+ * not show one user's cached class data to the next person who signs in. */
+export async function clearCachedData(): Promise<void> {
+    try {
+        await AsyncStorage.multiRemove(Object.values(CacheKeys));
+    } catch {
+        // best-effort; a failed cache clear must not block sign-out
+    }
+}
