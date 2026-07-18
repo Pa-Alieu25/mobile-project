@@ -68,13 +68,13 @@ export default function PostAnnouncementScreen() {
                 body: { title: cleanedTitle, message: cleanedMessage, category },
             });
 
-            Alert.alert('Announcement posted', 'Students can now see your announcement.', [
-                { text: 'OK', onPress: () => router.back() },
-            ]);
-
             setTitle('');
             setCategory('General');
             setMessage('');
+
+            Alert.alert('Announcement posted successfully', 'Students can now see your announcement.', [
+                { text: 'OK', onPress: () => router.back() },
+            ]);
         } catch (e) {
             Alert.alert('Could not post', e instanceof Error ? e.message : 'Please try again.');
         } finally {
