@@ -7,7 +7,7 @@ import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache, writeCache } from '@/services/cache';
 import { getItem, setItem } from '@/services/storage';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -83,9 +83,12 @@ export default function AnnouncementsScreen() {
         }
     }, [token]);
 
-    useEffect(() => {
-        loadAnnouncements();
-    }, [loadAnnouncements]);
+    // Reload on focus so newly posted / deleted announcements show when returning.
+    useFocusEffect(
+        useCallback(() => {
+            loadAnnouncements();
+        }, [loadAnnouncements])
+    );
 
     // Read status is tracked on the device, since the backend does not store it.
     useEffect(() => {

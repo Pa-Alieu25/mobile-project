@@ -79,30 +79,27 @@ export default function LoginScreen() {
         <Text style={styles.subtitle}>Sign in to your academic dashboard.</Text>
 
         <Text style={styles.label}>Email or index number</Text>
-        <View style={styles.field}>
-          <Ionicons name="person-outline" size={18} color={AppColors.mutedText} />
-          <TextInput
-            style={styles.input}
-            placeholderTextColor={AppColors.mutedText}
-            value={identifier}
-            onChangeText={setIdentifier}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
+        <TextInput
+          style={styles.input}
+          placeholderTextColor={AppColors.mutedText}
+          value={identifier}
+          onChangeText={setIdentifier}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+        />
 
         <Text style={styles.label}>Password</Text>
-        <View style={styles.field}>
-          <Ionicons name="lock-closed-outline" size={18} color={AppColors.mutedText} />
+        <View style={styles.passwordField}>
           <TextInput
-            style={styles.input}
+            style={styles.passwordInput}
             placeholderTextColor={AppColors.mutedText}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
           />
           <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
-            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={AppColors.mutedText} />
+            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={AppColors.mutedText} />
           </TouchableOpacity>
         </View>
 
@@ -141,12 +138,17 @@ const styles = StyleSheet.create({
   heading: { fontSize: 26, fontFamily: Fonts.heading, color: AppColors.text },
   subtitle: { fontSize: 15, color: AppColors.mutedText, marginTop: 4, marginBottom: 24, fontFamily: Fonts.body },
   label: { fontSize: 13, fontFamily: Fonts.bodyMedium, color: AppColors.text, marginBottom: 8 },
-  field: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, height: 54,
-    borderWidth: 1, borderColor: AppColors.border, borderRadius: 14, paddingHorizontal: 14,
+  input: {
+    height: 54, borderWidth: 1, borderColor: AppColors.border, borderRadius: 14,
+    paddingHorizontal: 16, marginBottom: 16, fontSize: 16, color: AppColors.text,
+    backgroundColor: AppColors.card, fontFamily: Fonts.body,
+  },
+  passwordField: {
+    flexDirection: 'row', alignItems: 'center', height: 54,
+    borderWidth: 1, borderColor: AppColors.border, borderRadius: 14, paddingHorizontal: 16,
     marginBottom: 16, backgroundColor: AppColors.card,
   },
-  input: { flex: 1, fontSize: 15, color: AppColors.text, fontFamily: Fonts.body },
+  passwordInput: { flex: 1, fontSize: 16, color: AppColors.text, fontFamily: Fonts.body },
   forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 20 },
   forgotText: { fontSize: 13, fontFamily: Fonts.bodyMedium, color: AppColors.primary },
   button: {

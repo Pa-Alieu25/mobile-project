@@ -197,14 +197,6 @@ export default function ProfileSettingsScreen() {
                 </View>
 
                 <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Offline Access</Text>
-                    <Text style={[styles.description, { marginBottom: 0 }]}>
-                        Your timetable, announcements, assignments, and exam venues are saved on this
-                        device automatically, so you can still open them when you&apos;re offline.
-                    </Text>
-                </View>
-
-                <View style={styles.card}>
                     <Text style={styles.sectionTitle}>Subscription Status</Text>
                     <Text style={styles.proBadge}>
                         {subscription?.subscribed

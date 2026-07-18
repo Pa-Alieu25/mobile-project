@@ -7,7 +7,7 @@ import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 
 // Keep the splash screen visible until the app fonts have loaded.
 SplashScreen.preventAutoHideAsync();
@@ -23,7 +23,9 @@ function RootNavigator() {
   }, [token]);
 
   // Deep link: tapping a notification opens the screen it points to (via data.url).
+  // Notification listeners are native-only; skip on web where they aren't available.
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     const goTo = (data: unknown) => {
       const url = (data as { url?: string } | undefined)?.url;
       if (typeof url === 'string') router.push(url as never);

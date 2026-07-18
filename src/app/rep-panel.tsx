@@ -2,8 +2,9 @@ import { AppColors } from '@/constants/colors';
 import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { getItem } from '@/services/storage';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     RefreshControl,
@@ -15,36 +16,33 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type Announcement = { id: number; title: string; category: string; postedAt: string };
+type Announcement = { id: number; title: string; category: string; postedAt: string; postedByUserId?: number | null };
 
 export default function RepPanel() {
     const { signOut, token } = useAuth();
-    const [counts, setCounts] = useState({ announcements: 0, assignments: 0, classes: 0, examVenues: 0 });
     const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     const loadOverview = useCallback(async () => {
-        const [ann, asg, tt, ev] = await Promise.allSettled([
-            apiRequest<Announcement[]>('/announcements', { token }),
-            apiRequest<unknown[]>('/assignments', { token }),
-            apiRequest<unknown[]>('/timetable', { token }),
-            apiRequest<unknown[]>('/exam-venues', { token }),
-        ]);
-        setCounts({
-            announcements: ann.status === 'fulfilled' ? ann.value.length : 0,
-            assignments: asg.status === 'fulfilled' ? asg.value.length : 0,
-            classes: tt.status === 'fulfilled' ? tt.value.length : 0,
-            examVenues: ev.status === 'fulfilled' ? ev.value.length : 0,
-        });
-        if (ann.status === 'fulfilled') setLatestAnnouncement(ann.value[0] ?? null);
-        setIsLoading(false);
-        setRefreshing(false);
+        try {
+            const announcements = await apiRequest<Announcement[]>('/announcements', { token });
+            const uid = Number(await getItem('userId'));
+            // Show the rep's own most recent post; fall back to the latest overall.
+            const mine = announcements.filter((a) => a.postedByUserId != null && a.postedByUserId === uid);
+            setLatestAnnouncement((mine[0] ?? announcements[0]) ?? null);
+        } catch {
+            // Leave the last known value; the card shows an empty state if none.
+        } finally {
+            setRefreshing(false);
+        }
     }, [token]);
 
-    useEffect(() => {
-        loadOverview();
-    }, [loadOverview]);
+    // Reload whenever the panel gains focus so a newly posted announcement shows.
+    useFocusEffect(
+        useCallback(() => {
+            loadOverview();
+        }, [loadOverview])
+    );
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -55,13 +53,6 @@ export default function RepPanel() {
         await signOut();
         router.replace('/');
     };
-
-    const metrics = [
-        { label: 'Announcements', value: counts.announcements, context: 'posted to students' },
-        { label: 'Assignments', value: counts.assignments, context: 'currently listed' },
-        { label: 'Classes', value: counts.classes, context: 'in the timetable' },
-        { label: 'Exam venues', value: counts.examVenues, context: 'ranges added' },
-    ];
 
     const actions = [
         { title: 'Post Announcement', text: 'Share class updates, cancellations, and reminders.', route: '/post-announcement' },
@@ -94,17 +85,6 @@ export default function RepPanel() {
                         <Text style={styles.signOutText}>Sign out</Text>
                     </TouchableOpacity>
                 </View>
-
-                {!isLoading && (
-                    <View style={styles.statStrip}>
-                        {metrics.map((metric) => (
-                            <View key={metric.label} style={styles.statItem}>
-                                <Text style={styles.statValue}>{metric.value}</Text>
-                                <Text style={styles.statLabel}>{metric.label}</Text>
-                            </View>
-                        ))}
-                    </View>
-                )}
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Latest announcement</Text>
