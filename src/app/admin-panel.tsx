@@ -1,6 +1,7 @@
 import { AppColors } from '@/constants/colors';
 import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
+import { useSignOut } from '@/hooks/use-sign-out';
 import { apiRequest } from '@/services/api';
 import { getItem } from '@/services/storage';
 import { router } from 'expo-router';
@@ -27,7 +28,8 @@ type Rep = {
 };
 
 export default function AdminPanel() {
-    const { signOut, token } = useAuth();
+    const { token } = useAuth();
+    const handleSignOut = useSignOut();
     const [adminName, setAdminName] = useState('Admin');
     const [reps, setReps] = useState<Rep[]>([]);
     const [counts, setCounts] = useState({ announcements: 0, assignments: 0, classes: 0 });
@@ -106,11 +108,6 @@ export default function AdminPanel() {
                 },
             },
         ]);
-    };
-
-    const handleSignOut = async () => {
-        await signOut();
-        router.replace('/');
     };
 
     const metrics = [

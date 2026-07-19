@@ -4,6 +4,7 @@ import { BottomNav } from '@/components/ui/bottom-nav';
 import { StatusPill } from '@/components/ui/status-pill';
 import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
+import { useSignOut } from '@/hooks/use-sign-out';
 import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { syncReminders } from '@/services/notifications';
@@ -99,7 +100,8 @@ const quickActions: { label: string; icon: IconName; route: string }[] = [
 ];
 
 export default function StudentDashboard() {
-    const { signOut, token } = useAuth();
+    const { token } = useAuth();
+    const handleSignOut = useSignOut();
     const [studentName, setStudentName] = useState('Student');
     const [programme, setProgramme] = useState('');
     const [level, setLevel] = useState('');
@@ -178,11 +180,6 @@ export default function StudentDashboard() {
     const onRefresh = () => {
         setRefreshing(true);
         loadDashboard();
-    };
-
-    const handleSignOut = async () => {
-        await signOut();
-        router.replace('/');
     };
 
     const todayName = weekDays[new Date().getDay()];

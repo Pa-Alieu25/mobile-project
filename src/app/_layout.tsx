@@ -1,5 +1,6 @@
 import { AppColors } from '@/constants/colors';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { ConfirmProvider } from '@/context/confirm-context';
 import { registerForPushNotifications } from '@/services/notifications';
 import { PublicSans_400Regular, PublicSans_600SemiBold, PublicSans_700Bold } from '@expo-google-fonts/public-sans';
 import { Sora_600SemiBold, Sora_700Bold, useFonts } from '@expo-google-fonts/sora';
@@ -113,7 +114,9 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootNavigator />
+      <ConfirmProvider>
+        <RootNavigator />
+      </ConfirmProvider>
     </AuthProvider>
   );
 }
