@@ -29,7 +29,9 @@ public class TimetableDocument {
     @Column(nullable = false)
     private long size;
 
-    @Lob
+    // No @Lob: Hibernate 6 maps @Lob byte[] to the JDBC BLOB/OID API, which
+    // conflicts with the "bytea" column type on PostgreSQL and throws at save
+    // time. Plain byte[] maps to VARBINARY, which matches bytea correctly.
     @Column(nullable = false, columnDefinition = "bytea")
     private byte[] data;
 

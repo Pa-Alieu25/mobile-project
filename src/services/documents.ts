@@ -54,6 +54,9 @@ function uploadToPath(
             } catch {
                 // keep default message
             }
+            // Surfaced here (not to the user) so the real status/body is visible
+            // during diagnosis instead of only the generic message above.
+            console.warn(`Upload to ${path} failed (status ${xhr.status}):`, xhr.responseText);
             reject(new Error(message));
         };
         xhr.onerror = () => reject(new Error('Upload failed. Please check your connection and try again.'));

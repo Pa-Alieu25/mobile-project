@@ -42,10 +42,10 @@ const SESSION_KEYS = [
 ] as const;
 
 // Per-student state that must not leak to the next person who signs in on the
-// same device (assignment completion, announcement reads, notification dedupe).
+// same device (notification dedupe). Assignment completion and announcement
+// read status live on the backend, keyed to the user's id, so they don't need
+// clearing here — they simply won't belong to whoever signs in next.
 const PRIVATE_STATE_KEYS = [
-    'completedAssignmentIds',
-    'readAnnouncementIds',
     'seenScoreIds',
     'alertedCancelledClassIds',
 ] as const;
