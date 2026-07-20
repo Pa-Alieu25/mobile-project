@@ -53,6 +53,7 @@ type Announcement = {
     category: string;
     postedBy: string;
     postedAt: string;
+    read: boolean;
 };
 
 const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -204,7 +205,12 @@ export default function StudentDashboard() {
         syncReminders(timetable);
     }, [isLoading, timetable]);
 
-    const latestAnnouncements = announcements.slice(0, 3);
+    // Mirrors "Assignments due": once read, an announcement drops off this
+    // home widget, but stays visible (marked read) on the full Announcements page.
+    const latestAnnouncements = useMemo(
+        () => announcements.filter((a) => !a.read).slice(0, 3),
+        [announcements]
+    );
     const profileLine = [programme, level ? `Level ${level}` : ''].filter(Boolean).join(' · ');
 
     return (

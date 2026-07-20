@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * sign-out/sign-in and device switches.
  */
 @Entity
-@Table(name = "announcement_reads", uniqueConstraints = @UniqueConstraint(columnNames = { "announcementId", "userId" }))
+@Table(name = "announcement_reads", uniqueConstraints = @UniqueConstraint(columnNames = { "announcement_id", "user_id" }))
 public class AnnouncementRead {
 
     @Id

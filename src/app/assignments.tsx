@@ -302,22 +302,26 @@ export default function AssignmentsScreen() {
                                     </TouchableOpacity>
                                 )}
 
-                                {!isCompleted ? (
-                                    <TouchableOpacity
-                                        style={styles.doneButton}
-                                        onPress={() => handleMarkAsDone(assignment.id)}
-                                    >
-                                        <Ionicons name="checkmark" size={18} color={AppColors.card} />
-                                        <Text style={styles.doneButtonText}>Mark as done</Text>
-                                    </TouchableOpacity>
-                                ) : (
-                                    <TouchableOpacity
-                                        style={styles.undoButton}
-                                        onPress={() => handleMoveToPending(assignment.id)}
-                                    >
-                                        <Ionicons name="arrow-undo-outline" size={16} color={AppColors.primary} />
-                                        <Text style={styles.undoButtonText}>Move back to pending</Text>
-                                    </TouchableOpacity>
+                                {/* Completion is a per-student action only — reps/admins manage
+                                    assignments (edit/delete) but don't mark them done on anyone's behalf. */}
+                                {!isManager && (
+                                    !isCompleted ? (
+                                        <TouchableOpacity
+                                            style={styles.doneButton}
+                                            onPress={() => handleMarkAsDone(assignment.id)}
+                                        >
+                                            <Ionicons name="checkmark" size={18} color={AppColors.card} />
+                                            <Text style={styles.doneButtonText}>Mark as done</Text>
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <TouchableOpacity
+                                            style={styles.undoButton}
+                                            onPress={() => handleMoveToPending(assignment.id)}
+                                        >
+                                            <Ionicons name="arrow-undo-outline" size={16} color={AppColors.primary} />
+                                            <Text style={styles.undoButtonText}>Move back to pending</Text>
+                                        </TouchableOpacity>
+                                    )
                                 )}
 
                                 <Text style={styles.postedBy}>Posted by {assignment.postedBy}</Text>
