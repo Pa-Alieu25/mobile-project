@@ -27,6 +27,8 @@ const ALLOWED_MIME_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'image/jpeg',
+    'image/png',
 ];
 
 function fileExtensionLabel(name: string): string {
@@ -78,8 +80,15 @@ export default function AddAssignmentScreen() {
             return;
         }
 
-        if (cleanedInstructions.length < 5) {
-            Alert.alert('Add instructions', 'Please add a short description of what students need to do.');
+        // Instructions and a document are each optional, but at least one must
+        // be present — an assignment with neither gives students nothing to go on.
+        if (!cleanedInstructions && !document) {
+            Alert.alert('Add instructions or a document', 'Please add a description, attach a document, or both.');
+            return;
+        }
+
+        if (cleanedInstructions && cleanedInstructions.length < 5) {
+            Alert.alert('Add instructions', 'Please add a short description of what students need to do, or clear it and attach a document instead.');
             return;
         }
 
@@ -92,7 +101,7 @@ export default function AddAssignmentScreen() {
                     courseCode: cleanedCourseCode,
                     title: cleanedTitle,
                     dueDate: cleanedDueDate,
-                    description: cleanedInstructions,
+                    description: cleanedInstructions || null,
                 },
             });
 
@@ -174,7 +183,7 @@ export default function AddAssignmentScreen() {
                             onChangeText={setDueDate}
                         />
 
-                        <Text style={styles.label}>Instructions</Text>
+                        <Text style={styles.label}>Instructions (optional if a document is attached)</Text>
                         <TextInput
                             style={styles.instructionsInput}
                             placeholderTextColor={AppColors.mutedText}
@@ -184,7 +193,7 @@ export default function AddAssignmentScreen() {
                             textAlignVertical="top"
                         />
 
-                        <Text style={styles.label}>Assignment Document (optional)</Text>
+                        <Text style={styles.label}>Assignment Document (optional if instructions are given)</Text>
                         {document ? (
                             <View style={styles.docCard}>
                                 <View style={styles.docIcon}>
@@ -209,7 +218,7 @@ export default function AddAssignmentScreen() {
                                 <Text style={styles.attachButtonText}>Choose Document</Text>
                             </TouchableOpacity>
                         )}
-                        <Text style={styles.helperText}>Supported: PDF, DOC, DOCX, PPT, PPTX (up to 10 MB).</Text>
+                        <Text style={styles.helperText}>Supported: PDF, DOC, DOCX, PPT, PPTX, JPG, JPEG, PNG (up to 25 MB).</Text>
 
                         {uploadProgress !== null && (
                             <View style={styles.progressWrap}>

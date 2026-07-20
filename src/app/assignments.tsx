@@ -26,7 +26,7 @@ type Assignment = {
     id: number;
     courseCode: string;
     title: string;
-    description: string;
+    description?: string | null;
     dueDate: string;
     classGroup: string;
     postedBy: string;
@@ -275,7 +275,9 @@ export default function AssignmentsScreen() {
                                     <Text style={styles.dueDate}>Due {assignment.dueDate}</Text>
                                 </View>
 
-                                <Text style={styles.instructions}>{assignment.description}</Text>
+                                {assignment.description && (
+                                    <Text style={styles.instructions}>{assignment.description}</Text>
+                                )}
 
                                 {assignment.documentName && (
                                     <TouchableOpacity

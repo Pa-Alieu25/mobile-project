@@ -10,6 +10,11 @@ export type PickedDocument = {
     size?: number;
 };
 
+// Kept in sync with the backend's spring.servlet.multipart.max-file-size and
+// each controller's own MAX_DOCUMENT_BYTES (application.properties,
+// AssignmentController, TimetableDocumentController).
+export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB
+
 /**
  * Upload a picked document to a backend path as multipart/form-data. Uses
  * XMLHttpRequest so we can report determinate upload progress on both native and
@@ -21,6 +26,11 @@ function uploadToPath(
     token: string | null,
     onProgress?: (fraction: number) => void
 ): Promise<void> {
+    // Caught here (before a network round trip) so oversized files get an
+    // immediate, specific message instead of waiting on the server to reject them.
+    if (file.size != null && file.size > MAX_UPLOAD_BYTES) {
+        return Promise.reject(new Error('File is too large. The maximum size is 25 MB.'));
+    }
     return new Promise((resolve, reject) => {
         const form = new FormData();
         // React Native's FormData accepts a { uri, name, type } file descriptor.

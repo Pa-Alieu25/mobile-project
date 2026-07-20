@@ -23,9 +23,11 @@ import java.util.stream.Collectors;
 @RequestMapping("/assignments")
 public class AssignmentController {
 
-    // Common academic document formats a lecturer might share.
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx", "ppt", "pptx");
-    private static final long MAX_DOCUMENT_BYTES = 10L * 1024 * 1024; // 10 MB
+    // Common academic document formats a lecturer might share, plus photos of
+    // handwritten notes/notices.
+    private static final Set<String> ALLOWED_EXTENSIONS =
+        Set.of("pdf", "doc", "docx", "ppt", "pptx", "jpg", "jpeg", "png");
+    private static final long MAX_DOCUMENT_BYTES = 25L * 1024 * 1024; // 25 MB
 
     private final AssignmentRepository assignmentRepository;
     private final AssignmentDocumentRepository documentRepository;
@@ -64,10 +66,13 @@ public class AssignmentController {
             Authentication authentication) {
         User user = currentUser(authentication);
 
+        String description = request.description() != null && !request.description().isBlank()
+            ? request.description() : null;
+
         Assignment assignment = Assignment.builder()
             .courseCode(request.courseCode())
             .title(request.title())
-            .description(request.description())
+            .description(description)
             .dueDate(request.dueDate())
             .classGroup(request.classGroup() != null ? request.classGroup() : "ALL")
             .postedBy(user.getFullName())
@@ -136,10 +141,10 @@ public class AssignmentController {
         String extension = extensionOf(originalName);
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                "Unsupported file type. Please upload a PDF, DOC, DOCX, PPT or PPTX file.");
+                "Unsupported file type. Please upload a PDF, DOC, DOCX, PPT, PPTX, JPG, JPEG or PNG file.");
         }
         if (file.getSize() > MAX_DOCUMENT_BYTES) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "File is too large. The maximum size is 10 MB.");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File is too large. The maximum size is 25 MB.");
         }
 
         byte[] bytes;
