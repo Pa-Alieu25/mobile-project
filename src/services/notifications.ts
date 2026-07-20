@@ -1,11 +1,10 @@
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { apiRequest } from './api';
 import { getItem, setItem } from './storage';
 
-// Local (on-device) reminders. This works in Expo Go — remote push would need
-// an EAS development build, which is a separate step.
+// Local (on-device) reminders. This works in development/production builds —
+// remote push would need an EAS development build, which is a separate step.
 
 export const CLASS_REMINDERS_ENABLED_KEY = 'classRemindersEnabled';
 export const NIGHT_SUMMARY_ENABLED_KEY = 'nightSummaryEnabled';
@@ -17,19 +16,48 @@ const WEEK_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 // throw ("...is not available on web"), so every entry point below no-ops on web.
 const IS_WEB = Platform.OS === 'web';
 
+// Expo Go (SDK 53+) no longer ships the native module expo-notifications
+// needs, and even importing the package there can throw and crash the whole
+// app on load. Constants.appOwnership is 'expo' only inside the Expo Go app —
+// development and production builds (including expo-dev-client) report null,
+// so this keeps real push/local notification functionality intact for them.
+// (Constants.executionEnvironment is the non-deprecated replacement, but it
+// reports 'storeClient' for both Expo Go and expo-dev-client builds, which
+// would wrongly disable notifications in dev-client builds too.)
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const NOTIFICATIONS_UNAVAILABLE = IS_WEB || IS_EXPO_GO;
+
+if (IS_EXPO_GO) {
+    console.log('Push notifications unavailable in Expo Go — use a development build to test them.');
+}
+
+// Imported dynamically so nothing in the package — including its own
+// module-level native module lookups — runs when notifications are
+// unavailable, instead of throwing at import time and crashing the app.
+type NotificationsModule = typeof import('expo-notifications');
+let notificationsPromise: Promise<NotificationsModule> | null = null;
+function getNotifications(): Promise<NotificationsModule> {
+    if (!notificationsPromise) {
+        notificationsPromise = import('expo-notifications');
+    }
+    return notificationsPromise;
+}
+
 function androidChannel(): string | undefined {
     return Platform.OS === 'android' ? ANDROID_CHANNEL_ID : undefined;
 }
 
 // Show the notification even when the app is foregrounded (native only).
-if (!IS_WEB) {
-    Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldShowBanner: true,
-            shouldShowList: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-        }),
+if (!NOTIFICATIONS_UNAVAILABLE) {
+    getNotifications().then((Notifications) => {
+        Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+                shouldShowBanner: true,
+                shouldShowList: true,
+                shouldPlaySound: true,
+                shouldSetBadge: false,
+            }),
+        });
     });
 }
 
@@ -46,7 +74,9 @@ export type ReminderClass = {
 // Ensures the Android channel exists and permission is granted. Returns whether
 // notifications are allowed.
 export async function ensureNotificationPermissions(): Promise<boolean> {
-    if (IS_WEB) return false;
+    if (NOTIFICATIONS_UNAVAILABLE) return false;
+    const Notifications = await getNotifications();
+
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
             name: 'Class reminders',
@@ -78,6 +108,7 @@ function classTimeToday(startTime: string): Date | null {
 // Schedules a reminder `minutesBefore` each of today's remaining classes.
 // Does not clear existing notifications — syncReminders() does that once.
 async function scheduleClassReminders(
+    Notifications: NotificationsModule,
     classes: ReminderClass[],
     minutesBefore: number = DEFAULT_MINUTES_BEFORE
 ): Promise<void> {
@@ -106,7 +137,7 @@ async function scheduleClassReminders(
 }
 
 // Schedules the night-before summary at 9 PM listing the next day's classes.
-async function scheduleNightSummary(timetable: ReminderClass[]): Promise<void> {
+async function scheduleNightSummary(Notifications: NotificationsModule, timetable: ReminderClass[]): Promise<void> {
     const now = new Date();
     const fireAt = new Date(now);
     fireAt.setHours(21, 0, 0, 0);
@@ -143,7 +174,8 @@ async function scheduleNightSummary(timetable: ReminderClass[]): Promise<void> {
 // user's toggles. Call this whenever the timetable loads. Clears existing
 // scheduled notifications first so nothing is duplicated.
 export async function syncReminders(timetable: ReminderClass[]): Promise<void> {
-    if (IS_WEB) return;
+    if (NOTIFICATIONS_UNAVAILABLE) return;
+    const Notifications = await getNotifications();
     await Notifications.cancelAllScheduledNotificationsAsync();
 
     const perms = await Notifications.getPermissionsAsync();
@@ -160,15 +192,16 @@ export async function syncReminders(timetable: ReminderClass[]): Promise<void> {
 
     if (classRemindersOn) {
         const today = WEEK_DAYS[new Date().getDay()];
-        await scheduleClassReminders(timetable.filter((c) => c.dayOfWeek === today));
+        await scheduleClassReminders(Notifications, timetable.filter((c) => c.dayOfWeek === today));
     }
     if (nightSummaryOn) {
-        await scheduleNightSummary(timetable);
+        await scheduleNightSummary(Notifications, timetable);
     }
 }
 
 export async function cancelAllReminders(): Promise<void> {
-    if (IS_WEB) return;
+    if (NOTIFICATIONS_UNAVAILABLE) return;
+    const Notifications = await getNotifications();
     await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
@@ -177,7 +210,7 @@ export async function cancelAllReminders(): Promise<void> {
 // in Expo Go / without a development build, where getExpoPushTokenAsync is not
 // available — it fails quietly and the app keeps working.
 export async function registerForPushNotifications(authToken: string | null): Promise<void> {
-    if (IS_WEB) return;
+    if (NOTIFICATIONS_UNAVAILABLE) return;
     try {
         const granted = await ensureNotificationPermissions();
         if (!granted) return;
@@ -185,6 +218,7 @@ export async function registerForPushNotifications(authToken: string | null): Pr
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         if (!projectId) return;
 
+        const Notifications = await getNotifications();
         const { data: expoPushToken } = await Notifications.getExpoPushTokenAsync({ projectId });
         await apiRequest('/notifications/register-token', {
             method: 'POST',
@@ -192,15 +226,16 @@ export async function registerForPushNotifications(authToken: string | null): Pr
             body: { token: expoPushToken },
         });
     } catch {
-        // Expected in Expo Go or before the dev build / FCM is set up — ignore.
+        // Expected before the dev build / FCM is set up — ignore.
     }
 }
 
 // True only when the user has enabled class reminders AND granted permission.
 // Used by screens to decide whether to (re)schedule without prompting.
 export async function classRemindersActive(): Promise<boolean> {
-    if (IS_WEB) return false;
+    if (NOTIFICATIONS_UNAVAILABLE) return false;
     if ((await getItem(CLASS_REMINDERS_ENABLED_KEY)) === 'false') return false;
+    const Notifications = await getNotifications();
     const perms = await Notifications.getPermissionsAsync();
     return perms.granted;
 }
@@ -214,7 +249,7 @@ export type ScoreNotice = { id: number; courseCode: string };
 // notifies when permission is already granted (never prompts here). This is the
 // on-device stand-in for the personalized push alert until remote push is set up.
 export async function notifyNewScores(scores: ScoreNotice[]): Promise<void> {
-    if (IS_WEB) return;
+    if (NOTIFICATIONS_UNAVAILABLE) return;
     const raw = await getItem(SEEN_SCORE_IDS_KEY);
     let seen: number[] = [];
     if (raw) {
@@ -228,6 +263,7 @@ export async function notifyNewScores(scores: ScoreNotice[]): Promise<void> {
     const fresh = scores.filter((s) => !seenSet.has(s.id));
     if (fresh.length === 0) return;
 
+    const Notifications = await getNotifications();
     const perms = await Notifications.getPermissionsAsync();
     if (perms.granted) {
         if (Platform.OS === 'android') {
@@ -260,7 +296,7 @@ export type CancelledClassNotice = { id: number; courseCode: string; dayOfWeek: 
 // been alerted about yet. Same on-device approach as scores: only when
 // permission is already granted, and each cancellation alerts once.
 export async function notifyCancelledClasses(cancelled: CancelledClassNotice[]): Promise<void> {
-    if (IS_WEB) return;
+    if (NOTIFICATIONS_UNAVAILABLE) return;
     const raw = await getItem(ALERTED_CANCELLED_KEY);
     let alerted: number[] = [];
     if (raw) {
@@ -274,6 +310,7 @@ export async function notifyCancelledClasses(cancelled: CancelledClassNotice[]):
     const fresh = cancelled.filter((c) => !alertedSet.has(c.id));
     if (fresh.length === 0) return;
 
+    const Notifications = await getNotifications();
     const perms = await Notifications.getPermissionsAsync();
     if (perms.granted) {
         if (Platform.OS === 'android') {
