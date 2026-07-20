@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -79,6 +80,7 @@ public class AssignmentController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
         User user = currentUser(authentication);
         Assignment assignment = assignmentRepository.findById(id)
@@ -109,6 +111,7 @@ public class AssignmentController {
 
     // Moves this assignment back to pending for the signed-in user only.
     @DeleteMapping("/{id}/complete")
+    @Transactional
     public ResponseEntity<Void> markPending(@PathVariable Long id, Authentication authentication) {
         User user = currentUser(authentication);
         completionRepository.deleteByAssignmentIdAndUserId(id, user.getId());
