@@ -6,7 +6,7 @@ import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache, writeCache } from '@/services/cache';
 import { formatFileSize, openAssignmentDocument } from '@/services/documents';
-import { getItem, setItem } from '@/services/storage';
+import { getItem } from '@/services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,18 +34,16 @@ type Assignment = {
     documentName?: string | null;
     documentType?: string | null;
     documentSize?: number | null;
+    completed: boolean;
 };
 
 type AssignmentTab = 'pending' | 'completed';
-
-const COMPLETED_IDS_KEY = 'completedAssignmentIds';
 
 export default function AssignmentsScreen() {
     const { token, role } = useAuth();
     const isManager = role === 'course_rep' || role === 'admin';
     const [activeTab, setActiveTab] = useState<AssignmentTab>('pending');
     const [assignments, setAssignments] = useState<Assignment[]>([]);
-    const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [downloadingId, setDownloadingId] = useState<number | null>(null);
     const [flash, setFlash] = useState<string | null>(null);
@@ -73,20 +71,6 @@ export default function AssignmentsScreen() {
     useEffect(() => {
         loadAssignments();
     }, [loadAssignments]);
-
-    // Completion is tracked on the device, since the backend does not store it.
-    useEffect(() => {
-        (async () => {
-            const raw = await getItem(COMPLETED_IDS_KEY);
-            if (raw) {
-                try {
-                    setCompletedIds(new Set<number>(JSON.parse(raw)));
-                } catch {
-                    // ignore malformed cache
-                }
-            }
-        })();
-    }, []);
 
     // Load the signed-in user's id so reps see manage controls only on their own posts.
     useEffect(() => {
@@ -140,13 +124,13 @@ export default function AssignmentsScreen() {
     };
 
     const pendingAssignments = useMemo(
-        () => assignments.filter((a) => !completedIds.has(a.id)),
-        [assignments, completedIds]
+        () => assignments.filter((a) => !a.completed),
+        [assignments]
     );
 
     const completedAssignments = useMemo(
-        () => assignments.filter((a) => completedIds.has(a.id)),
-        [assignments, completedIds]
+        () => assignments.filter((a) => a.completed),
+        [assignments]
     );
 
     const visibleAssignments = activeTab === 'pending' ? pendingAssignments : completedAssignments;
@@ -156,21 +140,31 @@ export default function AssignmentsScreen() {
         loadAssignments();
     };
 
-    async function persistCompleted(next: Set<number>) {
-        setCompletedIds(next);
-        await setItem(COMPLETED_IDS_KEY, JSON.stringify([...next]));
+    // Persisted per-student on the backend (keyed to the signed-in user's id),
+    // so completion survives sign-out/sign-in and does not affect other students.
+    async function setCompletion(assignmentId: number, completed: boolean) {
+        const next = assignments.map((a) => (a.id === assignmentId ? { ...a, completed } : a));
+        setAssignments(next);
+        await writeCache(CacheKeys.assignments, next);
+        try {
+            await apiRequest(`/assignments/${assignmentId}/complete`, {
+                method: completed ? 'PUT' : 'DELETE',
+                token,
+            });
+        } catch (e) {
+            // Roll back on failure so the UI doesn't claim a status that didn't save.
+            setAssignments(assignments);
+            await writeCache(CacheKeys.assignments, assignments);
+            Alert.alert('Could not update', e instanceof Error ? e.message : 'Please try again.');
+        }
     }
 
     async function handleMarkAsDone(assignmentId: number) {
-        const next = new Set(completedIds);
-        next.add(assignmentId);
-        await persistCompleted(next);
+        await setCompletion(assignmentId, true);
     }
 
     async function handleMoveToPending(assignmentId: number) {
-        const next = new Set(completedIds);
-        next.delete(assignmentId);
-        await persistCompleted(next);
+        await setCompletion(assignmentId, false);
     }
 
     const tabs: { key: AssignmentTab; label: string; count: number }[] = [
@@ -252,7 +246,7 @@ export default function AssignmentsScreen() {
                     </View>
                 ) : (
                     visibleAssignments.map((assignment) => {
-                        const isCompleted = completedIds.has(assignment.id);
+                        const isCompleted = assignment.completed;
                         return (
                             <View key={assignment.id} style={[styles.assignmentCard, cardShadow]}>
                                 <View style={styles.cardHeader}>

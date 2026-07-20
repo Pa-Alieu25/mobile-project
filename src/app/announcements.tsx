@@ -5,7 +5,7 @@ import { Fonts, cardShadow } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache, writeCache } from '@/services/cache';
-import { getItem, setItem } from '@/services/storage';
+import { getItem } from '@/services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,6 +30,7 @@ type Announcement = {
     postedBy: string;
     postedByUserId?: number | null;
     postedAt: string;
+    read: boolean;
 };
 
 const filterCategories = [
@@ -40,8 +41,6 @@ const filterCategories = [
     'Assignment',
     'Exam',
 ];
-
-const READ_IDS_KEY = 'readAnnouncementIds';
 
 // Icon + accent colour for each announcement category.
 function categoryStyle(category: string): { icon: keyof typeof Ionicons.glyphMap; color: string } {
@@ -59,7 +58,6 @@ export default function AnnouncementsScreen() {
     const isManager = role === 'course_rep' || role === 'admin';
     const [activeFilter, setActiveFilter] = useState<string>('All');
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [readIds, setReadIds] = useState<Set<number>>(new Set());
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [flash, setFlash] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -89,20 +87,6 @@ export default function AnnouncementsScreen() {
             loadAnnouncements();
         }, [loadAnnouncements])
     );
-
-    // Read status is tracked on the device, since the backend does not store it.
-    useEffect(() => {
-        (async () => {
-            const raw = await getItem(READ_IDS_KEY);
-            if (raw) {
-                try {
-                    setReadIds(new Set<number>(JSON.parse(raw)));
-                } catch {
-                    // ignore malformed cache
-                }
-            }
-        })();
-    }, []);
 
     // Load the signed-in user's id so reps see manage controls only on their own posts.
     useEffect(() => {
@@ -153,11 +137,19 @@ export default function AnnouncementsScreen() {
         loadAnnouncements();
     };
 
+    // Persisted per-student on the backend (keyed to the signed-in user's id),
+    // so read status survives sign-out/sign-in and does not affect other students.
     async function handleMarkAsRead(announcementId: number) {
-        const next = new Set(readIds);
-        next.add(announcementId);
-        setReadIds(next);
-        await setItem(READ_IDS_KEY, JSON.stringify([...next]));
+        const next = announcements.map((a) => (a.id === announcementId ? { ...a, read: true } : a));
+        setAnnouncements(next);
+        await writeCache(CacheKeys.announcements, next);
+        try {
+            await apiRequest(`/announcements/${announcementId}/read`, { method: 'PUT', token });
+        } catch (e) {
+            setAnnouncements(announcements);
+            await writeCache(CacheKeys.announcements, announcements);
+            Alert.alert('Could not update', e instanceof Error ? e.message : 'Please try again.');
+        }
     }
 
     return (
@@ -243,7 +235,7 @@ export default function AnnouncementsScreen() {
                     </View>
                 ) : (
                     filteredAnnouncements.map((announcement) => {
-                        const isRead = readIds.has(announcement.id);
+                        const isRead = announcement.read;
                         const cat = categoryStyle(announcement.category);
                         return (
                             <View

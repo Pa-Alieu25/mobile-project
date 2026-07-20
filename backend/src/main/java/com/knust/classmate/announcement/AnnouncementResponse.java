@@ -8,9 +8,10 @@ public record AnnouncementResponse(
     String targetClassGroup,
     String postedBy,
     Long postedByUserId,
-    String postedAt
+    String postedAt,
+    boolean read
 ) {
-    public static AnnouncementResponse from(Announcement a) {
+    public static AnnouncementResponse from(Announcement a, boolean read) {
         return new AnnouncementResponse(
             a.getId(),
             a.getTitle(),
@@ -19,7 +20,8 @@ public record AnnouncementResponse(
             a.getTargetClassGroup(),
             a.getPostedBy(),
             a.getPostedByUserId(),
-            a.getPostedAtFormatted()
+            a.getPostedAtFormatted(),
+            read
         );
     }
 }

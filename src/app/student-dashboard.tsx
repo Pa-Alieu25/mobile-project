@@ -43,6 +43,7 @@ type Assignment = {
     courseCode: string;
     title: string;
     dueDate: string;
+    completed: boolean;
 };
 
 type Announcement = {
@@ -110,7 +111,6 @@ export default function StudentDashboard() {
     const [timetable, setTimetable] = useState<TimetableRecord[]>([]);
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
     const [examCountdown, setExamCountdown] = useState<ExamCountdown | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -118,22 +118,14 @@ export default function StudentDashboard() {
 
     useEffect(() => {
         (async () => {
-            const [name, prog, lvl, completedRaw] = await Promise.all([
+            const [name, prog, lvl] = await Promise.all([
                 getItem('userName'),
                 getItem('programme'),
                 getItem('level'),
-                getItem('completedAssignmentIds'),
             ]);
             if (name) setStudentName(name);
             if (prog) setProgramme(prog);
             if (lvl) setLevel(lvl);
-            if (completedRaw) {
-                try {
-                    setCompletedIds(new Set<number>(JSON.parse(completedRaw)));
-                } catch {
-                    // ignore malformed cache
-                }
-            }
         })();
     }, []);
 
@@ -203,8 +195,8 @@ export default function StudentDashboard() {
     }, [todaysClasses]);
 
     const pendingAssignments = useMemo(
-        () => assignments.filter((a) => !completedIds.has(a.id)),
-        [assignments, completedIds]
+        () => assignments.filter((a) => !a.completed),
+        [assignments]
     );
 
     useEffect(() => {

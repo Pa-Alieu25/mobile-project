@@ -61,6 +61,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/assignments/*/document").hasAnyRole("COURSE_REP", "ADMIN")
                 // Editing/removing a class (e.g. cancelling it) is rep/admin only too.
                 .requestMatchers(HttpMethod.PUT, "/timetable/**").hasAnyRole("COURSE_REP", "ADMIN")
+                // Any signed-in user (including students) may un-mark their own
+                // completed assignment; must be matched before the broader
+                // rep/admin-only DELETE rule below.
+                .requestMatchers(HttpMethod.DELETE, "/assignments/*/complete").authenticated()
                 // Deleting posts is rep/admin only; per-record ownership is enforced in the controllers.
                 .requestMatchers(HttpMethod.DELETE, "/timetable/**", "/announcements/**", "/assignments/**")
                     .hasAnyRole("COURSE_REP", "ADMIN")
