@@ -7,3 +7,17 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* Browsers highlight autofilled inputs (e.g. saved passwords) with their own
+   yellow/orange background, overriding our TextInput styling. Force it back
+   to the app's card colour so autofilled fields (like the password field on
+   the login screen) look the same as the rest of the form. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+  -webkit-text-fill-color: #1F2933 !important;
+  caret-color: #1F2933;
+  transition: background-color 5000s ease-in-out 0s;
+}

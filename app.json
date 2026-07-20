@@ -38,7 +38,8 @@
       ],
       "expo-secure-store",
       "expo-notifications",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-dev-client"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -47,7 +48,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a1483b0e-2c15-4aef-91c1-4361f0452793"
+        "projectId": "7513c8ee-89dc-4da6-9eed-5887a22e51ce"
       }
     },
     "owner": "pa-alieu25s-team"

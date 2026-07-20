@@ -19,6 +19,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// react-native-web's Alert.alert() is a no-op stub — it never renders a
+// dialog or fires button callbacks on web. Without this, validation errors
+// and the post-success confirmation (whose "OK" button triggers the
+// navigate-back) silently do nothing on web, making a working post look
+// identical to a failed one.
+function notify(title: string, message?: string, onDismiss?: () => void) {
+    if (Platform.OS === 'web') {
+        window.alert(message ? `${title}\n\n${message}` : title);
+        onDismiss?.();
+        return;
+    }
+    Alert.alert(title, message, onDismiss ? [{ text: 'OK', onPress: onDismiss }] : undefined);
+}
+
 type AnnouncementCategory =
     | 'General'
     | 'Class Update'
@@ -46,17 +60,17 @@ export default function PostAnnouncementScreen() {
         const cleanedMessage = message.trim();
 
         if (!cleanedTitle || !cleanedMessage) {
-            Alert.alert('Missing details', 'Please enter the announcement title and message.');
+            notify('Missing details', 'Please enter the announcement title and message.');
             return;
         }
 
         if (cleanedTitle.length < 3) {
-            Alert.alert('Title too short', 'Please enter a clearer title.');
+            notify('Title too short', 'Please enter a clearer title.');
             return;
         }
 
         if (cleanedMessage.length < 10) {
-            Alert.alert('Message too short', 'Please enter a more detailed announcement message.');
+            notify('Message too short', 'Please enter a more detailed announcement message.');
             return;
         }
 
@@ -65,18 +79,16 @@ export default function PostAnnouncementScreen() {
             await apiRequest('/announcements', {
                 method: 'POST',
                 token,
-                body: { title: cleanedTitle, message: cleanedMessage, category },
+                body: { title: cleanedTitle, message: cleanedMessage, category, targetClassGroup: 'ALL' },
             });
 
             setTitle('');
             setCategory('General');
             setMessage('');
 
-            Alert.alert('Announcement posted successfully', 'Students can now see your announcement.', [
-                { text: 'OK', onPress: () => router.back() },
-            ]);
+            notify('Announcement posted successfully', 'Students can now see your announcement.', () => router.back());
         } catch (e) {
-            Alert.alert('Could not post', e instanceof Error ? e.message : 'Please try again.');
+            notify('Could not post', e instanceof Error ? e.message : 'Please try again.');
         } finally {
             setIsSubmitting(false);
         }

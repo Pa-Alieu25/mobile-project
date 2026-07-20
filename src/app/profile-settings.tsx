@@ -16,7 +16,7 @@ import {
 import { BottomNav } from '../components/ui/bottom-nav';
 import { AppColors } from '../constants/colors';
 import { Fonts } from '../constants/ui';
-import { useAuth } from '../context/auth-context';
+import { useSignOut } from '../hooks/use-sign-out';
 import {
     cancelAllReminders,
     CLASS_REMINDERS_ENABLED_KEY,
@@ -27,7 +27,7 @@ import { getItem, setItem } from '../services/storage';
 import { getSubscription, type SubscriptionStatus } from '../services/subscription';
 
 export default function ProfileSettingsScreen() {
-    const { signOut } = useAuth();
+    const handleSignOut = useSignOut();
     const [fullName, setFullName] = useState('Student');
     const [email, setEmail] = useState('');
     const [programme, setProgramme] = useState('');
@@ -83,11 +83,6 @@ export default function ProfileSettingsScreen() {
             await setItem(CLASS_REMINDERS_ENABLED_KEY, 'false');
             await cancelAllReminders();
         }
-    }
-
-    async function handleSignOut() {
-        await signOut();
-        router.replace('/');
     }
 
     function handleSubscription() {

@@ -1,6 +1,7 @@
 import { AppColors } from '@/constants/colors';
 import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
+import { useSignOut } from '@/hooks/use-sign-out';
 import { apiRequest } from '@/services/api';
 import { getItem } from '@/services/storage';
 import { router, useFocusEffect } from 'expo-router';
@@ -19,7 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 type Announcement = { id: number; title: string; category: string; postedAt: string; postedByUserId?: number | null };
 
 export default function RepPanel() {
-    const { signOut, token } = useAuth();
+    const { token } = useAuth();
+    const handleSignOut = useSignOut();
     const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -47,11 +49,6 @@ export default function RepPanel() {
     const onRefresh = () => {
         setRefreshing(true);
         loadOverview();
-    };
-
-    const handleSignOut = async () => {
-        await signOut();
-        router.replace('/');
     };
 
     const actions = [
