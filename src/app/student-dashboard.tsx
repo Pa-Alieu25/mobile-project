@@ -48,6 +48,7 @@ type Assignment = {
 type Announcement = {
     id: number;
     title: string;
+    message: string;
     category: string;
     postedBy: string;
     postedAt: string;
@@ -211,7 +212,7 @@ export default function StudentDashboard() {
         syncReminders(timetable);
     }, [isLoading, timetable]);
 
-    const latestAnnouncement = announcements[0] ?? null;
+    const latestAnnouncements = announcements.slice(0, 3);
     const profileLine = [programme, level ? `Level ${level}` : ''].filter(Boolean).join(' · ');
 
     return (
@@ -237,7 +238,7 @@ export default function StudentDashboard() {
                     </View>
                     <TouchableOpacity style={styles.bellButton} onPress={() => router.push('/announcements')}>
                         <Ionicons name="notifications-outline" size={22} color={AppColors.text} />
-                        {latestAnnouncement && <View style={styles.bellDot} />}
+                        {announcements.length > 0 && <View style={styles.bellDot} />}
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
                         <Ionicons name="log-out-outline" size={20} color={AppColors.primary} />
@@ -361,26 +362,29 @@ export default function StudentDashboard() {
                             )}
                         </View>
 
-                        {/* Latest announcement */}
+                        {/* Latest Announcements */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Latest announcement</Text>
+                                <Text style={styles.sectionTitle}>Latest Announcements</Text>
                                 <TouchableOpacity onPress={() => router.push('/announcements')}>
                                     <Text style={styles.sectionLink}>All</Text>
                                 </TouchableOpacity>
                             </View>
-                            {latestAnnouncement ? (
-                                <TouchableOpacity style={[styles.iconRow, cardShadow]} onPress={() => router.push('/announcements')}>
-                                    <View style={styles.iconBadgeGreen}>
-                                        <Ionicons name="megaphone-outline" size={18} color={AppColors.primary} />
-                                    </View>
-                                    <View style={styles.iconRowBody}>
-                                        <Text style={styles.iconRowTitle}>{latestAnnouncement.title}</Text>
-                                        <Text style={styles.iconRowMeta}>{latestAnnouncement.category} · {latestAnnouncement.postedAt}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ) : (
+                            {latestAnnouncements.length === 0 ? (
                                 <Text style={styles.emptyLine}>No announcements yet.</Text>
+                            ) : (
+                                latestAnnouncements.map((a) => (
+                                    <TouchableOpacity key={a.id} style={[styles.iconRow, cardShadow]} onPress={() => router.push('/announcements')}>
+                                        <View style={styles.iconBadgeGreen}>
+                                            <Ionicons name="megaphone-outline" size={18} color={AppColors.primary} />
+                                        </View>
+                                        <View style={styles.iconRowBody}>
+                                            <Text style={styles.iconRowTitle}>{a.title}</Text>
+                                            <Text style={styles.iconRowMeta}>{a.category} · {a.postedAt}</Text>
+                                            <Text style={styles.iconRowMessage} numberOfLines={2}>{a.message}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))
                             )}
                         </View>
 
@@ -498,6 +502,7 @@ const styles = StyleSheet.create({
     iconRowBody: { flex: 1 },
     iconRowTitle: { fontSize: 15, fontFamily: Fonts.bodyBold, color: AppColors.text, marginBottom: 3 },
     iconRowMeta: { fontSize: 13, color: AppColors.mutedText, fontFamily: Fonts.body },
+    iconRowMessage: { fontSize: 13, color: AppColors.mutedText, fontFamily: Fonts.body, marginTop: 3, lineHeight: 18 },
 
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     gridItem: {
