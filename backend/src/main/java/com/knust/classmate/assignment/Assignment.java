@@ -20,7 +20,9 @@ public class Assignment {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    // Optional: an assignment may have instructions, an attached document, or
+    // both — only the combination is required, not this field on its own.
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(nullable = false)

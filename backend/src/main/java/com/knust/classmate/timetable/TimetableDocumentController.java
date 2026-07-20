@@ -20,8 +20,9 @@ import java.util.Set;
 @RequestMapping("/timetable/document")
 public class TimetableDocumentController {
 
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx", "xls", "xlsx", "csv");
-    private static final long MAX_DOCUMENT_BYTES = 10L * 1024 * 1024; // 10 MB
+    private static final Set<String> ALLOWED_EXTENSIONS =
+        Set.of("pdf", "doc", "docx", "xls", "xlsx", "csv", "jpg", "jpeg", "png");
+    private static final long MAX_DOCUMENT_BYTES = 25L * 1024 * 1024; // 25 MB
 
     private final TimetableDocumentRepository documentRepository;
     private final UserRepository userRepository;
@@ -57,10 +58,10 @@ public class TimetableDocumentController {
         String extension = extensionOf(originalName);
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                "Unsupported file type. Please upload a PDF, DOC, DOCX, XLS, XLSX or CSV file.");
+                "Unsupported file type. Please upload a PDF, DOC, DOCX, XLS, XLSX, CSV, JPG, JPEG or PNG file.");
         }
         if (file.getSize() > MAX_DOCUMENT_BYTES) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "File is too large. The maximum size is 10 MB.");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "File is too large. The maximum size is 25 MB.");
         }
 
         byte[] bytes;
