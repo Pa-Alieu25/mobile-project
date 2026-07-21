@@ -1,6 +1,6 @@
 import { AppColors } from '@/constants/colors';
 import { Fonts } from '@/constants/ui';
-import { useAuth } from '@/context/auth-context';
+import { useAuth, type UserRole } from '@/context/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -16,28 +16,34 @@ type Tab = {
     route: string;
 };
 
-const TABS: Tab[] = [
-    { key: 'home', label: 'Home', icon: 'home-outline', iconActive: 'home', route: '/student-dashboard' },
-    { key: 'timetable', label: 'Timetable', icon: 'calendar-outline', iconActive: 'calendar', route: '/timetable' },
-    { key: 'alerts', label: 'Alerts', icon: 'megaphone-outline', iconActive: 'megaphone', route: '/announcements' },
-    { key: 'tasks', label: 'Tasks', icon: 'document-text-outline', iconActive: 'document-text', route: '/assignments' },
-    { key: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person', route: '/profile-settings' },
-];
+// "Home" is the only tab that differs by role — everything else points at the
+// same shared list/view screens both students and reps already use.
+function tabsForRole(role: UserRole | null): Tab[] {
+    return [
+        { key: 'home', label: 'Home', icon: 'home-outline', iconActive: 'home', route: role === 'course_rep' ? '/rep-panel' : '/student-dashboard' },
+        { key: 'timetable', label: 'Timetable', icon: 'calendar-outline', iconActive: 'calendar', route: '/timetable' },
+        { key: 'alerts', label: 'Alerts', icon: 'megaphone-outline', iconActive: 'megaphone', route: '/announcements' },
+        { key: 'tasks', label: 'Tasks', icon: 'document-text-outline', iconActive: 'document-text', route: '/assignments' },
+        { key: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person', route: '/profile-settings' },
+    ];
+}
 
 /**
- * Persistent bottom navigation for the student experience. It renders only for
- * students — course reps and admins use their panel-based navigation, so the
- * bar is hidden for them to avoid pointing at student-only screens.
+ * Persistent bottom navigation for students and course reps. Admins use their
+ * own panel-based navigation, so the bar is hidden for them to avoid pointing
+ * at screens outside that flow.
  */
 export function BottomNav({ active }: { active: TabKey }) {
     const { role } = useAuth();
     const insets = useSafeAreaInsets();
 
-    if (role && role !== 'student') return null;
+    if (role === 'admin') return null;
+
+    const tabs = tabsForRole(role);
 
     return (
         <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-            {TABS.map((tab) => {
+            {tabs.map((tab) => {
                 const isActive = tab.key === active;
                 return (
                     <TouchableOpacity
