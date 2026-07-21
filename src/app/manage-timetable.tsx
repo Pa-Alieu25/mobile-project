@@ -522,10 +522,6 @@ export default function ManageTimetableScreen() {
 
                     <View style={styles.docCard}>
                         <Text style={styles.sectionTitle}>Official timetable document</Text>
-                        <Text style={styles.docHint}>
-                            Upload the full timetable (PDF, DOC, DOCX, XLS, XLSX, CSV, JPG, JPEG, PNG, up to 25 MB) for
-                            students to open. The manual class records above still drive live status changes.
-                        </Text>
 
                         {timetableDocs.map((doc) => (
                             <View key={doc.id} style={styles.docRow}>
@@ -826,14 +822,6 @@ const styles = StyleSheet.create({
         borderColor: AppColors.border,
         marginTop: 18,
         ...cardShadow,
-    },
-    docHint: {
-        fontSize: 13,
-        color: AppColors.mutedText,
-        lineHeight: 19,
-        marginBottom: 14,
-        marginTop: 2,
-        fontFamily: Fonts.body,
     },
     docRow: {
         flexDirection: 'row',
