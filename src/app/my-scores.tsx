@@ -2,7 +2,6 @@ import { AppColors } from '@/constants/colors';
 import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
-import { notifyNewScores } from '@/services/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -39,8 +38,6 @@ export default function MyScoresScreen() {
             setError(null);
             const data = await apiRequest<MidsemScore[]>('/scores/me', { token });
             setScores(data);
-            // Alert the student about any score they haven't seen before.
-            await notifyNewScores(data.map((s) => ({ id: s.id, courseCode: s.courseCode })));
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Unable to load your scores.');
         } finally {

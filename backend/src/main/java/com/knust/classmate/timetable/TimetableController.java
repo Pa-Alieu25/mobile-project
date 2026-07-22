@@ -72,7 +72,7 @@ public class TimetableController {
         TimetableRecord saved = timetableRepository.save(record);
 
         if ("cancelled".equalsIgnoreCase(request.status())) {
-            pushService.notifyAll("Class cancelled",
+            pushService.notifyClassGroup(saved.getClassGroup(), "Class cancelled",
                 saved.getCourseCode() + " on " + saved.getDayOfWeek() + " has been cancelled.", "/timetable");
         }
 

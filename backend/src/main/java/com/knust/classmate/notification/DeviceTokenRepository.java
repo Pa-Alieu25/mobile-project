@@ -12,4 +12,6 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
     Optional<DeviceToken> findByExpoPushToken(String expoPushToken);
 
     List<DeviceToken> findByUserId(Long userId);
+
+    List<DeviceToken> findByUserIdIn(List<Long> userIds);
 }
