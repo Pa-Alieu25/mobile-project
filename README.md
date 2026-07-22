@@ -169,3 +169,5 @@ Use controlled test accounts and safe sample data. Do not hardcode passwords in 
 - **Document open fails on device:** the dev client predates `expo-sharing`; rebuild it.
 - **Login says "too many attempts":** login rate-limiting triggered (5 failures / 15 min) — wait.
 - **Emulator can't reach the backend:** use `http://10.0.2.2:8080/api`, not `localhost`.
+
+*Troubleshooting: If the Android emulator has no internet, try restarting it from Android Studio using "Cold Boot".*
