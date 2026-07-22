@@ -196,9 +196,6 @@ export default function ManageExamVenuesScreen() {
 
                     <View style={styles.uploadCard}>
                         <Text style={styles.sectionTitle}>Bulk upload (CSV)</Text>
-                        <Text style={styles.helperText}>
-                            Upload many venues at once. First row must be the header:
-                        </Text>
                         <Text style={styles.codeText}>
                             courseCode, courseTitle, examDate, examTime, venue, buildingOrBlock, roomOrHall, startIndex, endIndex, status
                         </Text>

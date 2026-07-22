@@ -239,10 +239,6 @@ export default function UploadScoreScreen() {
 
                     <View style={styles.bulkCard}>
                         <Text style={styles.sectionTitle}>Bulk upload from a file</Text>
-                        <Text style={styles.bulkHint}>
-                            Upload a CSV, XLS or XLSX file with a header row to publish many scores at once, using the
-                            course code and title above. Students can be identified by index or reference number.
-                        </Text>
                         <Text style={styles.codeText}>identifier, score, grade</Text>
 
                         {csvFileName ? (
@@ -348,7 +344,6 @@ const styles = StyleSheet.create({
         ...cardShadow,
     },
     sectionTitle: { fontSize: 18, fontFamily: Fonts.headingSemi, color: AppColors.text, marginBottom: 6 },
-    bulkHint: { fontSize: 13, color: AppColors.mutedText, lineHeight: 19, marginBottom: 12, fontFamily: Fonts.body },
     codeText: {
         fontSize: 12, color: AppColors.text, backgroundColor: AppColors.background,
         borderRadius: 8, padding: 10, marginBottom: 16, fontFamily: Fonts.body,

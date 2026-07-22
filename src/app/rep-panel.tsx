@@ -1,9 +1,11 @@
 import { AppColors } from '@/constants/colors';
+import { BottomNav } from '@/components/ui/bottom-nav';
 import { Fonts } from '@/constants/ui';
 import { useAuth } from '@/context/auth-context';
 import { useSignOut } from '@/hooks/use-sign-out';
 import { apiRequest } from '@/services/api';
 import { getItem } from '@/services/storage';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -16,6 +18,8 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 type Announcement = { id: number; title: string; category: string; postedAt: string; postedByUserId?: number | null };
 
@@ -51,15 +55,17 @@ export default function RepPanel() {
         loadOverview();
     };
 
-    const actions = [
-        { title: 'Post Announcement', text: 'Share class updates, cancellations, and reminders.', route: '/post-announcement' },
-        { title: 'View Announcements', text: 'Open your announcements to review or delete a post.', route: '/announcements' },
-        { title: 'Add Assignment', text: 'Record assignment details, due dates, and documents.', route: '/add-assignment' },
-        { title: 'View Assignments', text: 'Open the assignment list to review or delete a post.', route: '/assignments' },
-        { title: 'Manage Timetable', text: 'Add or update class times, lecturers, and venues.', route: '/manage-timetable' },
-        { title: 'Upload Exam Venue Info', text: 'Add exam venue ranges so students can search them.', route: '/manage-exam-venues' },
-        { title: 'Upload Midsem Score', text: 'Post a student’s midsem score by index number.', route: '/upload-score' },
-        { title: 'Profile & Settings', text: 'Manage reminders, offline access, and account settings.', route: '/profile-settings' },
+    // Icons reused from the Student Panel's own Quick actions grid, matched by
+    // concept (announcements share a megaphone, assignments share a document).
+    const actions: { title: string; icon: IconName; route: string }[] = [
+        { title: 'Post Announcement', icon: 'megaphone-outline', route: '/post-announcement' },
+        { title: 'View Announcements', icon: 'megaphone-outline', route: '/announcements' },
+        { title: 'Add Assignment', icon: 'document-text-outline', route: '/add-assignment' },
+        { title: 'View Assignments', icon: 'document-text-outline', route: '/assignments' },
+        { title: 'Manage Timetable', icon: 'calendar-outline', route: '/manage-timetable' },
+        { title: 'Upload Exam Venue Info', icon: 'search-outline', route: '/manage-exam-venues' },
+        { title: 'Upload Midsem Score', icon: 'ribbon-outline', route: '/upload-score' },
+        { title: 'Profile & Settings', icon: 'person-outline', route: '/profile-settings' },
     ];
 
     return (
@@ -103,20 +109,24 @@ export default function RepPanel() {
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Quick actions</Text>
-                    <View style={styles.actionList}>
+                    <View style={styles.grid}>
                         {actions.map((action) => (
                             <TouchableOpacity
                                 key={action.route}
-                                style={styles.actionCard}
+                                style={styles.gridItem}
                                 onPress={() => router.push(action.route as any)}
                             >
-                                <Text style={styles.actionTitle}>{action.title}</Text>
-                                <Text style={styles.actionText}>{action.text}</Text>
+                                <View style={styles.gridIcon}>
+                                    <Ionicons name={action.icon} size={22} color={AppColors.primary} />
+                                </View>
+                                <Text style={styles.gridLabel}>{action.title}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
                 </View>
             </ScrollView>
+
+            <BottomNav active="home" />
         </SafeAreaView>
     );
 }
@@ -248,26 +258,14 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         fontFamily: Fonts.body,
     },
-    actionList: {
-        gap: 12,
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    gridItem: {
+        flexBasis: '31%', flexGrow: 1, backgroundColor: AppColors.card, borderRadius: 14,
+        paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: AppColors.border,
     },
-    actionCard: {
-        backgroundColor: AppColors.card,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: AppColors.border,
+    gridIcon: {
+        width: 44, height: 44, borderRadius: 14, backgroundColor: AppColors.primary + '14',
+        justifyContent: 'center', alignItems: 'center', marginBottom: 8,
     },
-    actionTitle: {
-        fontSize: 16,
-        fontFamily: Fonts.headingSemi,
-        color: AppColors.primary,
-        marginBottom: 4,
-    },
-    actionText: {
-        fontSize: 14,
-        color: AppColors.mutedText,
-        lineHeight: 20,
-        fontFamily: Fonts.body,
-    },
+    gridLabel: { fontSize: 12, fontFamily: Fonts.bodyMedium, color: AppColors.text, textAlign: 'center' },
 });
