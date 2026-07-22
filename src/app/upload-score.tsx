@@ -23,11 +23,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ParsedRow = { identifier: string; score: string; grade: string };
 
-// Case-insensitive, space-insensitive column lookup so common header spellings work.
+// Case- and punctuation-insensitive column lookup so real-world header spellings
+// ("Index No.", "Raw", "Ref No") still match; blank headers are skipped so they
+// can't shadow a real column under the empty-string key.
 function pickColumn(record: Record<string, string>, keys: string[]): string {
     const normalised: Record<string, string> = {};
     for (const key of Object.keys(record)) {
-        normalised[key.toLowerCase().replace(/\s+/g, '')] = record[key];
+        const cleaned = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cleaned === '') continue;
+        normalised[cleaned] = record[key];
     }
     for (const key of keys) {
         const value = normalised[key];
@@ -77,8 +81,11 @@ export default function UploadScoreScreen() {
             const valid: ParsedRow[] = [];
             let skipped = 0;
             for (const rec of records) {
-                const identifier = pickColumn(rec, ['identifier', 'indexnumber', 'index', 'referencenumber', 'reference', 'refnumber', 'refno']);
-                const scoreValue = pickColumn(rec, ['score', 'mark', 'marks']);
+                const identifier = pickColumn(rec, [
+                    'identifier', 'index', 'indexno', 'indexnumber', 'studentindex',
+                    'referencenumber', 'reference', 'refnumber', 'refno',
+                ]);
+                const scoreValue = pickColumn(rec, ['score', 'raw', 'rawscore', 'mark', 'marks', 'total', 'totalscore']);
                 const gradeValue = pickColumn(rec, ['grade']);
                 if (!identifier || !scoreValue) { skipped++; continue; }
                 valid.push({ identifier, score: scoreValue, grade: gradeValue });
