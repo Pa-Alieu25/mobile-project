@@ -37,6 +37,11 @@ public class TimetableRecord {
     @Column(nullable = false)
     private String status = "active";
 
+    // Left over from an earlier schema version of this table; still NOT NULL
+    // at the DB level, so every insert must populate it.
+    @Column(nullable = false)
+    private Long createdByUserId;
+
     public TimetableRecord() {}
 
     public Long getId() { return id; }
@@ -58,12 +63,15 @@ public class TimetableRecord {
     public void setClassGroup(String classGroup) { this.classGroup = classGroup; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Long getCreatedByUserId() { return createdByUserId; }
+    public void setCreatedByUserId(Long createdByUserId) { this.createdByUserId = createdByUserId; }
 
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {
         private String courseCode, courseTitle, dayOfWeek, startTime, endTime;
         private String venue, lecturer, classGroup, status = "active";
+        private Long createdByUserId;
 
         public Builder courseCode(String v) { this.courseCode = v; return this; }
         public Builder courseTitle(String v) { this.courseTitle = v; return this; }
@@ -74,6 +82,7 @@ public class TimetableRecord {
         public Builder lecturer(String v) { this.lecturer = v; return this; }
         public Builder classGroup(String v) { this.classGroup = v; return this; }
         public Builder status(String v) { this.status = v; return this; }
+        public Builder createdByUserId(Long v) { this.createdByUserId = v; return this; }
 
         public TimetableRecord build() {
             TimetableRecord r = new TimetableRecord();
@@ -86,6 +95,7 @@ public class TimetableRecord {
             r.lecturer = this.lecturer;
             r.classGroup = this.classGroup;
             r.status = this.status;
+            r.createdByUserId = this.createdByUserId;
             return r;
         }
     }
