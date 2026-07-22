@@ -59,7 +59,8 @@ type Announcement = {
 const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function parseTimeToMinutes(time: string): number | null {
-    const match = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    // Accepts "8:00", "08:00", "8:00 AM", "8:00:00" (e.g. from Excel-typed data) etc.
+    const match = time.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
     if (!match) return null;
     let hours = parseInt(match[1], 10);
     const minutes = parseInt(match[2], 10);
@@ -189,6 +190,8 @@ export default function StudentDashboard() {
     const nextClass = useMemo(() => {
         const now = new Date();
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        // "Next class" = the soonest class that hasn't started yet. A class already
+        // in progress is not shown here (it's still visible in Today's schedule below).
         return todaysClasses
             .map((c) => ({ record: c, start: parseTimeToMinutes(c.startTime) }))
             .filter((x): x is { record: TimetableRecord; start: number } => x.start !== null && x.start >= nowMinutes)
