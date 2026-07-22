@@ -8,7 +8,6 @@ import { useAuth } from '@/context/auth-context';
 import { apiRequest } from '@/services/api';
 import { CacheKeys, fetchWithCache } from '@/services/cache';
 import { formatFileSize, openTimetableDocument, type TimetableDocumentMeta } from '@/services/documents';
-import { notifyCancelledClasses } from '@/services/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -105,12 +104,6 @@ export default function TimetableScreen() {
             );
             setRecords(data);
             setIsOffline(fromCache);
-            // Alert the student about any class newly marked cancelled.
-            await notifyCancelledClasses(
-                data
-                    .filter((r) => r.status === 'cancelled')
-                    .map((r) => ({ id: r.id, courseCode: r.courseCode, dayOfWeek: r.dayOfWeek }))
-            );
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Unable to load the timetable.');
         } finally {

@@ -77,7 +77,8 @@ public class AnnouncementController {
             .build();
 
         Announcement saved = announcementRepository.save(announcement);
-        pushService.notifyAll(request.category() + " announcement", request.title(), "/announcements");
+        pushService.notifyClassGroup(saved.getTargetClassGroup(),
+            request.category() + " announcement", request.title(), "/announcements");
         auditService.log("ANNOUNCEMENT_POSTED", request.category() + ": " + request.title());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(AnnouncementResponse.from(saved, false));
