@@ -16,7 +16,9 @@ module.exports = () => ({
       // file env var; local dev falls back to the file at the project root.
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON || './google-services.json',
       adaptiveIcon: {
-        backgroundColor: '#FFFFFF',
+        // Matches the near-black backdrop in icon.png (sampled, not a guess) so
+        // the logo's white elements (person, calendar) keep contrast.
+        backgroundColor: '#0D0D0F',
         foregroundImage: './assets/images/android-icon-foreground.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
@@ -31,11 +33,12 @@ module.exports = () => ({
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#208AEF',
-          android: {
-            image: './assets/images/splash-icon.png',
-            imageWidth: 76,
-          },
+          // Same sampled near-black as android.adaptiveIcon.backgroundColor —
+          // keeps the logo's white elements visible.
+          backgroundColor: '#0D0D0F',
+          image: './assets/images/splash-icon.png',
+          imageWidth: 200,
+          resizeMode: 'contain',
         },
       ],
       'expo-secure-store',
