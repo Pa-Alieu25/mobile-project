@@ -31,11 +31,10 @@ module.exports = () => ({
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#208AEF',
-          android: {
-            image: './assets/images/splash-icon.png',
-            imageWidth: 76,
-          },
+          backgroundColor: '#FFFFFF',
+          image: './assets/images/splash-icon.png',
+          imageWidth: 200,
+          resizeMode: 'contain',
         },
       ],
       'expo-secure-store',
