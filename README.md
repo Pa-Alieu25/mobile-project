@@ -131,6 +131,21 @@ dev build is required whenever a **native** dependency changes (e.g. `expo-shari
 - Remote push needs an EAS dev build + FCM; document open/download needs `expo-sharing` in the
   installed dev build.
 
+
+  ## Local Development Setup (Windows / Android)
+
+If you are developing on a Windows machine, the recommended workflow is to use an Android Emulator or a physical Android device. 
+
+**Steps to run locally:**
+1. Ensure you have [Node.js](https://nodejs.org/) installed.
+2. Run `npm install` to install project dependencies.
+3. If using an emulator, open Android Studio and launch your Virtual Device.
+4. Run `npx expo start` in the terminal.
+5. Press `a` in the terminal to launch the app on your Android emulator, or scan the QR code with the Expo Go app on your physical Android device.
+
+*Note: Avoid committing changes to `app.json` or `eas.json` that are specific to your personal Expo account.*
+
+
 ## Demo procedure
 
 1. Register a student; log in.
