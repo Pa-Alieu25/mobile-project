@@ -40,6 +40,11 @@ public class ExamVenue {
     @Column(nullable = false)
     private String status = "pending";
 
+    // Left over from an earlier schema version of this table; still NOT NULL
+    // at the DB level, so every insert must populate it.
+    @Column(nullable = false)
+    private Long createdByUserId;
+
     public ExamVenue() {}
 
     public Long getId() { return id; }
@@ -63,6 +68,8 @@ public class ExamVenue {
     public void setEndIndex(Long endIndex) { this.endIndex = endIndex; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Long getCreatedByUserId() { return createdByUserId; }
+    public void setCreatedByUserId(Long createdByUserId) { this.createdByUserId = createdByUserId; }
 
     public static Builder builder() { return new Builder(); }
 
@@ -70,6 +77,7 @@ public class ExamVenue {
         private String courseCode, courseTitle, examDate, examTime, venue;
         private String buildingOrBlock, roomOrHall, status = "pending";
         private Long startIndex, endIndex;
+        private Long createdByUserId;
 
         public Builder courseCode(String v) { this.courseCode = v; return this; }
         public Builder courseTitle(String v) { this.courseTitle = v; return this; }
@@ -81,6 +89,7 @@ public class ExamVenue {
         public Builder startIndex(Long v) { this.startIndex = v; return this; }
         public Builder endIndex(Long v) { this.endIndex = v; return this; }
         public Builder status(String v) { this.status = v; return this; }
+        public Builder createdByUserId(Long v) { this.createdByUserId = v; return this; }
 
         public ExamVenue build() {
             ExamVenue e = new ExamVenue();
@@ -94,6 +103,7 @@ public class ExamVenue {
             e.startIndex = this.startIndex;
             e.endIndex = this.endIndex;
             e.status = this.status;
+            e.createdByUserId = this.createdByUserId;
             return e;
         }
     }
