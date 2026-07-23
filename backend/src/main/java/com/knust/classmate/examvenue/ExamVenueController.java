@@ -1,10 +1,14 @@
 package com.knust.classmate.examvenue;
 
 import com.knust.classmate.audit.AuditService;
+import com.knust.classmate.exception.ApiException;
+import com.knust.classmate.user.User;
+import com.knust.classmate.user.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -16,11 +20,14 @@ import java.util.Map;
 public class ExamVenueController {
 
     private final ExamVenueRepository examVenueRepository;
+    private final UserRepository userRepository;
     private final AuditService auditService;
 
     @Autowired
-    public ExamVenueController(ExamVenueRepository examVenueRepository, AuditService auditService) {
+    public ExamVenueController(ExamVenueRepository examVenueRepository, UserRepository userRepository,
+                               AuditService auditService) {
         this.examVenueRepository = examVenueRepository;
+        this.userRepository = userRepository;
         this.auditService = auditService;
     }
 
@@ -40,7 +47,9 @@ public class ExamVenueController {
     }
 
     @PostMapping
-    public ResponseEntity<ExamVenue> create(@Valid @RequestBody ExamVenueRequest request) {
+    public ResponseEntity<ExamVenue> create(@Valid @RequestBody ExamVenueRequest request,
+                                            Authentication authentication) {
+        User user = currentUser(authentication);
         ExamVenue venue = ExamVenue.builder()
             .courseCode(request.courseCode())
             .courseTitle(request.courseTitle())
@@ -52,6 +61,7 @@ public class ExamVenueController {
             .startIndex(request.startIndex())
             .endIndex(request.endIndex())
             .status(request.status() != null ? request.status() : "pending")
+            .createdByUserId(user.getId())
             .build();
 
         ExamVenue saved = examVenueRepository.save(venue);
@@ -63,7 +73,9 @@ public class ExamVenueController {
     // Bulk upload from a parsed CSV. Rows missing required fields are skipped;
     // the response reports how many were received vs. actually saved.
     @PostMapping("/bulk")
-    public ResponseEntity<Map<String, Object>> createBulk(@RequestBody List<ExamVenueRequest> requests) {
+    public ResponseEntity<Map<String, Object>> createBulk(@RequestBody List<ExamVenueRequest> requests,
+                                                           Authentication authentication) {
+        User user = currentUser(authentication);
         List<ExamVenue> venues = new ArrayList<>();
         for (ExamVenueRequest r : requests) {
             if (isBlank(r.courseCode()) || isBlank(r.courseTitle()) || isBlank(r.examDate())
@@ -82,6 +94,7 @@ public class ExamVenueController {
                 .startIndex(r.startIndex())
                 .endIndex(r.endIndex())
                 .status(r.status() != null ? r.status() : "pending")
+                .createdByUserId(user.getId())
                 .build());
         }
 
@@ -93,5 +106,10 @@ public class ExamVenueController {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private User currentUser(Authentication authentication) {
+        return userRepository.findByEmail(authentication.getName())
+            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found."));
     }
 }
