@@ -64,6 +64,8 @@ function RootNavigator() {
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="student-dashboard" />
         <Stack.Screen name="profile-settings" />
+        <Stack.Screen name="edit-profile" />
+        <Stack.Screen name="change-password" />
         <Stack.Screen name="paywall" />
         <Stack.Screen name="timetable" />
         <Stack.Screen name="announcements" />

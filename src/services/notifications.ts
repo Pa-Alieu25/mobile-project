@@ -210,23 +210,31 @@ export async function cancelAllReminders(): Promise<void> {
 // in Expo Go / without a development build, where getExpoPushTokenAsync is not
 // available — it fails quietly and the app keeps working.
 export async function registerForPushNotifications(authToken: string | null): Promise<void> {
+    console.log('[push] registerForPushNotifications called, NOTIFICATIONS_UNAVAILABLE =', NOTIFICATIONS_UNAVAILABLE);
     if (NOTIFICATIONS_UNAVAILABLE) return;
     try {
         const granted = await ensureNotificationPermissions();
+        console.log('[push] permission granted =', granted);
         if (!granted) return;
 
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        console.log('[push] resolved projectId =', projectId);
         if (!projectId) return;
 
         const Notifications = await getNotifications();
+        console.log('[push] calling getExpoPushTokenAsync...');
         const { data: expoPushToken } = await Notifications.getExpoPushTokenAsync({ projectId });
+        console.log('[push] got expo push token =', expoPushToken);
+
+        console.log('[push] POSTing token to /notifications/register-token...');
         await apiRequest('/notifications/register-token', {
             method: 'POST',
             token: authToken,
             body: { token: expoPushToken },
         });
-    } catch {
-        // Expected before the dev build / FCM is set up — ignore.
+        console.log('[push] register-token request succeeded');
+    } catch (err) {
+        console.log('[push] registerForPushNotifications FAILED:', err);
     }
 }
 

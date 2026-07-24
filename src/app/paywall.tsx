@@ -1,7 +1,7 @@
 import { AppColors } from '@/constants/colors';
-import { isPaystackConfigured, PAYSTACK_PUBLIC_KEY, PAYSTACK_TEST_MODE } from '@/config/paystack';
 import { Fonts } from '@/constants/ui';
-import { getItem } from '@/services/storage';
+import { useAuth } from '@/context/auth-context';
+import { initializePayment, verifyPayment, type PaymentStatus } from '@/services/payment';
 import { Ionicons } from '@expo/vector-icons';
 import {
     activatePro,
@@ -11,7 +11,7 @@ import {
     type SubscriptionStatus,
 } from '@/services/subscription';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -21,7 +21,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const freeFeatures = [
@@ -39,18 +39,20 @@ const proFeatures = [
     'Custom reminder intensity per alert type',
 ];
 
-export default function PaywallScreen() {
-    return (
-        <PaystackProvider publicKey={PAYSTACK_PUBLIC_KEY} currency="GHS" debug={PAYSTACK_TEST_MODE}>
-            <PaywallContent />
-        </PaystackProvider>
-    );
+// The webhook may still be in flight when the browser closes, so a fresh
+// PENDING result isn't a failure — poll verify a few times before giving up.
+const MAX_POLL_ATTEMPTS = 5;
+const POLL_DELAY_MS = 2500;
+
+function wait(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function PaywallContent() {
-    const { popup } = usePaystack();
+export default function PaywallScreen() {
+    const { token } = useAuth();
     const [status, setStatus] = useState<SubscriptionStatus | null>(null);
     const [isWorking, setIsWorking] = useState(false);
+    const [confirmingMessage, setConfirmingMessage] = useState<string | null>(null);
 
     const load = async () => setStatus(await getSubscription());
 
@@ -58,36 +60,73 @@ function PaywallContent() {
         load();
     }, []);
 
-    const handleSubscribe = async () => {
-        if (!isPaystackConfigured) {
-            Alert.alert(
-                'Paystack not set up',
-                'Add your Paystack test public key (EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY) to enable checkout.'
-            );
-            return;
+    // Polls our backend's verify endpoint — the only source of truth for
+    // whether the payment actually succeeded. Never trusts the browser
+    // closing, or anything the client observed on its own, as proof of payment.
+    const confirmPayment = async (reference: string) => {
+        setConfirmingMessage('Confirming your payment…');
+
+        let lastStatus: PaymentStatus = 'PENDING';
+        for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+            try {
+                const result = await verifyPayment(reference, token);
+                lastStatus = result.status;
+
+                if (result.status === 'SUCCESS') {
+                    await activatePro();
+                    await load();
+                    setConfirmingMessage(null);
+                    setIsWorking(false);
+                    Alert.alert('Payment successful', 'You now have ClassMate Pro.');
+                    return;
+                }
+
+                if (result.status === 'FAILED' || result.status === 'ABANDONED') {
+                    setConfirmingMessage(null);
+                    setIsWorking(false);
+                    Alert.alert('Payment not completed', 'Your payment was not successful. You can try again.');
+                    return;
+                }
+            } catch {
+                // Network hiccup mid-poll — fall through and retry on the next attempt.
+            }
+            if (attempt < MAX_POLL_ATTEMPTS - 1) {
+                await wait(POLL_DELAY_MS);
+            }
         }
 
-        const email = (await getItem('userEmail')) || 'student@knust.edu.gh';
+        // Exhausted our attempts and it's still pending — not an error, the
+        // webhook may just be slow. Pro will unlock next time the user checks.
+        setConfirmingMessage(null);
+        setIsWorking(false);
+        if (lastStatus === 'PENDING') {
+            Alert.alert(
+                "We'll confirm shortly",
+                "Your payment is still being confirmed. Check back in a minute — Pro unlocks automatically once it's done."
+            );
+        }
+    };
 
-        popup.checkout({
-            email,
-            amount: PRO_PRICE_GHS * 100, // Paystack expects the amount in the currency's subunit (pesewas)
-            reference: `classmate_${Date.now()}`,
-            metadata: { purpose: 'ClassMate Pro subscription' },
-            onSuccess: async () => {
-                setIsWorking(true);
-                await activatePro();
-                await load();
-                setIsWorking(false);
-                Alert.alert('Payment successful', 'You now have ClassMate Pro.');
-            },
-            onCancel: () => {
-                Alert.alert('Payment cancelled', 'You have not been charged.');
-            },
-            onError: (err) => {
-                Alert.alert('Payment failed', err?.message || 'Something went wrong. Please try again.');
-            },
-        });
+    const handleSubscribe = async () => {
+        console.log('[pay] handleSubscribe pressed, isWorking =', isWorking, 'token present =', !!token);
+        if (isWorking) return; // guards against a double-tap starting two transactions
+        try {
+            setIsWorking(true);
+            console.log('[pay] calling initializePayment...');
+            const { authorizationUrl, reference } = await initializePayment(PRO_PRICE_GHS * 100, token);
+            console.log('[pay] initializePayment succeeded, reference =', reference, 'authorizationUrl =', authorizationUrl);
+
+            await WebBrowser.openBrowserAsync(authorizationUrl);
+            console.log('[pay] browser closed, confirming payment...');
+            // The browser closing tells us nothing — the user may have paid,
+            // cancelled, or just backgrounded the app. Only our backend's
+            // verify response (backed by its own Paystack check) decides this.
+            await confirmPayment(reference);
+        } catch (e) {
+            console.log('[pay] handleSubscribe FAILED:', e);
+            setIsWorking(false);
+            Alert.alert('Could not start checkout', e instanceof Error ? e.message : 'Please try again.');
+        }
     };
 
     const handleCancel = () => {
@@ -168,6 +207,13 @@ function PaywallContent() {
                             ))}
                         </View>
 
+                        {confirmingMessage && (
+                            <View style={styles.confirmingRow}>
+                                <ActivityIndicator size="small" color={AppColors.primary} />
+                                <Text style={styles.confirmingText}>{confirmingMessage}</Text>
+                            </View>
+                        )}
+
                         {status.subscribed ? (
                             <TouchableOpacity
                                 style={[styles.secondaryButton, isWorking && styles.disabled]}
@@ -193,9 +239,8 @@ function PaywallContent() {
                         )}
 
                         <Text style={styles.footnote}>
-                            Secure payment by Paystack (Mobile Money and card).
-                            {PAYSTACK_TEST_MODE ? ' Test mode — use a Paystack test card, no real charge.' : ''} No
-                            automatic renewal — you re-subscribe each semester.
+                            Secure payment by Paystack (Mobile Money and card). Use a Paystack test card in
+                            development — no real charge. No automatic renewal — you re-subscribe each semester.
                         </Text>
                     </>
                 )}
@@ -236,6 +281,12 @@ const styles = StyleSheet.create({
     check: { color: AppColors.success, fontSize: 16, fontWeight: '900', width: 18 },
     star: { color: AppColors.accent, fontSize: 16, fontWeight: '900', width: 18 },
     featureText: { flex: 1, fontSize: 14, color: AppColors.text, lineHeight: 20, fontFamily: Fonts.body },
+    confirmingRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        backgroundColor: AppColors.card, borderRadius: 14, borderWidth: 1, borderColor: AppColors.border,
+        padding: 14, marginBottom: 16,
+    },
+    confirmingText: { fontSize: 13, color: AppColors.mutedText, fontFamily: Fonts.bodyMedium, flex: 1 },
     primaryButton: {
         height: 52,
         backgroundColor: AppColors.primary,

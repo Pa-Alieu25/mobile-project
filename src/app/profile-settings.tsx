@@ -16,7 +16,9 @@ import {
 import { BottomNav } from '../components/ui/bottom-nav';
 import { AppColors } from '../constants/colors';
 import { Fonts } from '../constants/ui';
+import { useAuth } from '../context/auth-context';
 import { useSignOut } from '../hooks/use-sign-out';
+import { apiRequest } from '../services/api';
 import {
     cancelAllReminders,
     CLASS_REMINDERS_ENABLED_KEY,
@@ -26,13 +28,31 @@ import {
 import { getItem, setItem } from '../services/storage';
 import { getSubscription, type SubscriptionStatus } from '../services/subscription';
 
+type ProfileResponse = {
+    fullName: string;
+    email: string;
+    studentIndexNumber: string | null;
+    phone: string | null;
+    bio: string | null;
+    programme: string | null;
+    level: string | null;
+};
+
 export default function ProfileSettingsScreen() {
     const handleSignOut = useSignOut();
-    const [fullName, setFullName] = useState('Student');
-    const [email, setEmail] = useState('');
-    const [programme, setProgramme] = useState('');
-    const [level, setLevel] = useState('');
-    const [role, setRole] = useState('student');
+    const { token, user, updateUser } = useAuth();
+
+    // Read-mode fields are sourced from the auth context (not local state) so
+    // an edit made on the Edit Profile screen shows here immediately, without
+    // needing this screen to remount.
+    const fullName = user?.fullName || 'Student';
+    const email = user?.email || '';
+    const indexNumber = user?.indexNumber || '';
+    const programme = user?.programme || '';
+    const level = user?.level || '';
+    const phone = user?.phone || '';
+    const bio = user?.bio || '';
+    const role = user?.role || 'student';
 
     const [classReminders, setClassReminders] = useState(true);
     const [assignmentReminders, setAssignmentReminders] = useState(true);
@@ -45,17 +65,22 @@ export default function ProfileSettingsScreen() {
     }, []);
 
     async function loadProfile() {
-        const storedName = await getItem('userName');
-        const storedEmail = await getItem('userEmail');
-        const storedProgramme = await getItem('programme');
-        const storedLevel = await getItem('level');
-        const storedRole = await getItem('userRole');
-
-        if (storedName) setFullName(storedName);
-        if (storedEmail) setEmail(storedEmail);
-        if (storedProgramme) setProgramme(storedProgramme);
-        if (storedLevel) setLevel(storedLevel);
-        if (storedRole) setRole(storedRole);
+        // Fresh data when online; falls back silently to whatever's already in
+        // the auth context (from storage) when offline.
+        try {
+            const profile = await apiRequest<ProfileResponse>('/profile/me', { token });
+            await updateUser({
+                fullName: profile.fullName,
+                email: profile.email,
+                indexNumber: profile.studentIndexNumber ?? undefined,
+                phone: profile.phone ?? undefined,
+                bio: profile.bio ?? undefined,
+                programme: profile.programme ?? undefined,
+                level: profile.level ?? undefined,
+            });
+        } catch {
+            // Offline or request failed — keep showing cached context data.
+        }
 
         const remindersPref = await getItem(CLASS_REMINDERS_ENABLED_KEY);
         if (remindersPref !== null) setClassReminders(remindersPref === 'true');
@@ -139,8 +164,32 @@ export default function ProfileSettingsScreen() {
                     </View>
 
                     <View style={styles.profileRow}>
-                        <Text style={styles.label}>Email</Text>
+                        <View style={styles.labelRow}>
+                            <Text style={styles.label}>Email</Text>
+                            <Ionicons name="lock-closed-outline" size={11} color={AppColors.mutedText} />
+                        </View>
                         <Text style={styles.value}>{email || 'Not available yet'}</Text>
+                    </View>
+
+                    <View style={styles.profileRow}>
+                        <View style={styles.labelRow}>
+                            <Text style={styles.label}>Student Index Number</Text>
+                            <Ionicons name="lock-closed-outline" size={11} color={AppColors.mutedText} />
+                        </View>
+                        <Text style={styles.value}>{indexNumber || 'Not available yet'}</Text>
+                    </View>
+                    <Text style={styles.lockedNote}>
+                        Email and index number are tied to your account and can&apos;t be changed.
+                    </Text>
+
+                    <View style={styles.profileRow}>
+                        <Text style={styles.label}>Phone</Text>
+                        <Text style={styles.value}>{phone || 'Not set'}</Text>
+                    </View>
+
+                    <View style={styles.profileRow}>
+                        <Text style={styles.label}>Bio</Text>
+                        <Text style={styles.value}>{bio || 'Not set'}</Text>
                     </View>
 
                     <View style={styles.profileRow}>
@@ -157,6 +206,17 @@ export default function ProfileSettingsScreen() {
                         <Text style={styles.label}>Role</Text>
                         <Text style={styles.roleBadge}>{role}</Text>
                     </View>
+
+                    <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/edit-profile')}>
+                        <Text style={styles.primaryButtonText}>Edit Profile</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.outlineButton, { marginTop: 10 }]}
+                        onPress={() => router.push('/change-password')}
+                    >
+                        <Text style={styles.outlineButtonText}>Change Password</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.card}>
@@ -302,11 +362,25 @@ const styles = StyleSheet.create({
     profileRow: {
         marginBottom: 12,
     },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        marginBottom: 3,
+    },
     label: {
         fontSize: 12,
         color: AppColors.mutedText,
         marginBottom: 3,
         fontFamily: Fonts.body,
+    },
+    lockedNote: {
+        fontSize: 11,
+        color: AppColors.mutedText,
+        fontFamily: Fonts.body,
+        marginTop: -6,
+        marginBottom: 14,
+        lineHeight: 15,
     },
     value: {
         fontSize: 15,

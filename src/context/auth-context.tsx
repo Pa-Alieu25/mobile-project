@@ -13,6 +13,11 @@ export type AuthUser = {
     referenceNumber?: string;
     programme?: string;
     level?: string;
+    // Not returned by /auth/login — populated once the profile screen fetches
+    // GET /profile/me, then kept current via updateUser() after edits.
+    phone?: string;
+    bio?: string;
+    avatarUrl?: string;
 };
 
 export type LoginResponse = {
@@ -23,9 +28,13 @@ export type LoginResponse = {
 type AuthContextValue = {
     token: string | null;
     role: UserRole | null;
+    user: AuthUser | null;
     isLoading: boolean;
     signIn: (data: LoginResponse) => Promise<void>;
     signOut: () => Promise<void>;
+    // Merges into the in-memory user (so any screen reading it re-renders
+    // immediately) and persists the core fields so they survive an app restart.
+    updateUser: (updates: Partial<AuthUser>) => Promise<void>;
 };
 
 // Every persisted session key, kept in one place so sign-out can clear them all.
@@ -62,16 +71,39 @@ export function homeRouteForRole(role: UserRole | null): '/student-dashboard' | 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [token, setToken] = useState<string | null>(null);
     const [role, setRole] = useState<UserRole | null>(null);
+    const [user, setUser] = useState<AuthUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     // Restore any existing session on app launch.
     useEffect(() => {
         (async () => {
             try {
-                const storedToken = await getItem('authToken');
-                const storedRole = (await getItem('userRole')) as UserRole | null;
+                const [storedToken, storedRole, id, fullName, email, indexNumber, referenceNumber, programme, level] =
+                    await Promise.all([
+                        getItem('authToken'),
+                        getItem('userRole'),
+                        getItem('userId'),
+                        getItem('userName'),
+                        getItem('userEmail'),
+                        getItem('indexNumber'),
+                        getItem('referenceNumber'),
+                        getItem('programme'),
+                        getItem('level'),
+                    ]);
                 setToken(storedToken);
-                setRole(storedRole);
+                setRole(storedRole as UserRole | null);
+                if (fullName && email && storedRole) {
+                    setUser({
+                        id: id ? Number(id) : 0,
+                        fullName,
+                        email,
+                        role: storedRole as UserRole,
+                        indexNumber: indexNumber ?? undefined,
+                        referenceNumber: referenceNumber ?? undefined,
+                        programme: programme ?? undefined,
+                        level: level ?? undefined,
+                    });
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -81,21 +113,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const value = useMemo<AuthContextValue>(() => ({
         token,
         role,
+        user,
         isLoading,
         signIn: async (data: LoginResponse) => {
-            const { token: newToken, user } = data;
+            const { token: newToken, user: newUser } = data;
             await setItem('authToken', newToken);
-            await setItem('userId', String(user.id));
-            await setItem('userName', user.fullName);
-            await setItem('userEmail', user.email);
-            await setItem('userRole', user.role);
-            if (user.indexNumber) await setItem('indexNumber', user.indexNumber);
-            if (user.referenceNumber) await setItem('referenceNumber', user.referenceNumber);
-            if (user.programme) await setItem('programme', user.programme);
-            if (user.level) await setItem('level', user.level);
+            await setItem('userId', String(newUser.id));
+            await setItem('userName', newUser.fullName);
+            await setItem('userEmail', newUser.email);
+            await setItem('userRole', newUser.role);
+            if (newUser.indexNumber) await setItem('indexNumber', newUser.indexNumber);
+            if (newUser.referenceNumber) await setItem('referenceNumber', newUser.referenceNumber);
+            if (newUser.programme) await setItem('programme', newUser.programme);
+            if (newUser.level) await setItem('level', newUser.level);
 
             setToken(newToken);
-            setRole(user.role);
+            setRole(newUser.role);
+            setUser(newUser);
         },
         signOut: async () => {
             for (const key of SESSION_KEYS) {
@@ -109,8 +143,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await clearCachedData();
             setToken(null);
             setRole(null);
+            setUser(null);
         },
-    }), [token, role, isLoading]);
+        // Merges into the in-memory user immediately (so every mounted screen
+        // reading `user` re-renders with the new values) and persists the
+        // fields already tracked in storage so a restart doesn't lose them.
+        updateUser: async (updates: Partial<AuthUser>) => {
+            setUser((prev) => (prev ? { ...prev, ...updates } : prev));
+            if (updates.fullName !== undefined) await setItem('userName', updates.fullName);
+            if (updates.email !== undefined) await setItem('userEmail', updates.email);
+            if (updates.programme !== undefined) await setItem('programme', updates.programme ?? '');
+            if (updates.level !== undefined) await setItem('level', updates.level ?? '');
+        },
+    }), [token, role, user, isLoading]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

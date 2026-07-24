@@ -38,6 +38,21 @@ public class User {
     @Column
     private String classGroup;
 
+    @Column
+    private String phone;
+
+    @Column(length = 500)
+    private String bio;
+
+    @Column
+    private String avatarUrl;
+
+    // Set true once a Paystack payment for the Pro plan is confirmed SUCCESS
+    // (see payment.PaymentService) — the server-side source of truth for Pro
+    // access, independent of anything the client claims locally.
+    @Column(nullable = false)
+    private boolean proActive = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role = UserRole.STUDENT;
@@ -74,6 +89,14 @@ public class User {
     public void setLevel(String level) { this.level = level; }
     public String getClassGroup() { return classGroup; }
     public void setClassGroup(String classGroup) { this.classGroup = classGroup; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public boolean isProActive() { return proActive; }
+    public void setProActive(boolean proActive) { this.proActive = proActive; }
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
     public String getStatus() { return status; }
@@ -88,6 +111,7 @@ public class User {
     public static class Builder {
         private String fullName, indexNumber, referenceNumber, email, password;
         private String programme, level, classGroup, status = "ACTIVE";
+        private String phone, bio, avatarUrl;
         private UserRole role = UserRole.STUDENT;
         private boolean enabled = true;
 
@@ -99,6 +123,9 @@ public class User {
         public Builder programme(String v) { this.programme = v; return this; }
         public Builder level(String v) { this.level = v; return this; }
         public Builder classGroup(String v) { this.classGroup = v; return this; }
+        public Builder phone(String v) { this.phone = v; return this; }
+        public Builder bio(String v) { this.bio = v; return this; }
+        public Builder avatarUrl(String v) { this.avatarUrl = v; return this; }
         public Builder role(UserRole v) { this.role = v; return this; }
         public Builder status(String v) { this.status = v; return this; }
         public Builder enabled(boolean v) { this.enabled = v; return this; }
@@ -113,6 +140,9 @@ public class User {
             u.programme = this.programme;
             u.level = this.level;
             u.classGroup = this.classGroup;
+            u.phone = this.phone;
+            u.bio = this.bio;
+            u.avatarUrl = this.avatarUrl;
             u.role = this.role;
             u.status = this.status;
             u.enabled = this.enabled;
