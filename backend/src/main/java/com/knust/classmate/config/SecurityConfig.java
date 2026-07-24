@@ -51,6 +51,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/exam-venues/search").permitAll()
+                // Paystack sends no JWT — the HMAC signature in PaymentController.webhook()
+                // IS the authentication for this one route. The callback page is just
+                // where the checkout browser redirects to; it carries no auth either.
+                .requestMatchers(HttpMethod.POST, "/payments/webhook").permitAll()
+                .requestMatchers(HttpMethod.GET, "/payments/callback").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 // Only course reps and admins can create academic records; students are read-only.
                 .requestMatchers(HttpMethod.POST, "/announcements", "/assignments", "/timetable",

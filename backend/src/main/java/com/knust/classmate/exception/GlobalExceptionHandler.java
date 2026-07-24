@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Map;
 
@@ -51,6 +52,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, String>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
         return body(HttpStatus.BAD_REQUEST, "File is too large. The maximum size is 25 MB.");
+    }
+
+    // Spring's fallback when no controller matches the request path/method at
+    // all — a genuine "this route doesn't exist" (e.g. hitting an endpoint the
+    // currently-deployed build doesn't have yet). Without this, it fell through
+    // to the generic 500 handler below and hid that distinction from the client.
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNoResourceFound(NoResourceFoundException ex) {
+        return body(HttpStatus.NOT_FOUND, "Not found.");
     }
 
     @ExceptionHandler(Exception.class)

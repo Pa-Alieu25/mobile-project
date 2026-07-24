@@ -17,6 +17,7 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+google-services.json
 
 # Metro
 .metro-health-check*
@@ -30,8 +31,11 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# local env files (real secrets — backend/.env.example is the only .env* file
+# that should ever be committed)
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
